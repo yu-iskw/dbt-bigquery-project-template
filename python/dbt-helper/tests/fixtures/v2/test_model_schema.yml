@@ -1,0 +1,43 @@
+---
+version: 2
+
+models:
+  - name: test_model
+    description: test description
+    docs:
+      show: true
+    meta:
+      a: x
+      b: y
+      c: z
+    tests:
+      - unique_test
+    columns:
+      - name: column1
+        description: description 1
+        meta:
+          a: x
+          b: y
+          c: z
+        quote: false
+        tests:
+          - unique
+          - not_null
+        tags:
+          - tag1
+          - tag2
+          - tag3
+      - name: column2
+        description: description 2
+        meta:
+          a: x
+          b: y
+          c: z
+        quote: false
+        tests:
+          - unique
+          - not_null
+        tags:
+          - tag1
+          - tag2
+          - tag3

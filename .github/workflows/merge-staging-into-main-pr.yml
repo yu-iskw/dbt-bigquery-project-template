@@ -1,0 +1,55 @@
+#
+# The workflow is used for creating a pull request to merge `staging`
+# into `main` as a scheduled job.
+#
+name: Create a pull request to automatically merge staging into main
+on:
+  workflow_dispatch:
+  schedule:
+    # 9am every Tuesday and Thursday in JST
+      - cron: '0 0 * * 2,4'
+jobs:
+  merge-staging-into-main:
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          ref: main
+      - name: Take in updates from the staging branch
+        run: |
+          git fetch origin staging:staging
+          git reset --hard staging
+      - name: Create a pull request
+        id: create_pr
+        # SEE: https://github.com/peter-evans/create-pull-request
+        uses: peter-evans/create-pull-request@v3
+        with:
+          branch: merge-staging-into-main
+          delete-branch: true
+          draft: false
+          title: "Merge staging into main"
+          labels: release
+          body: |
+            Merge a snapshot of the `staging` branch into the `main` branch.
+            The pull request was automatically created by GitHub Actions.
+
+            **Please do not squash merge, because conflicts will occur.**
+      - name: Send a slack message
+        # If the URL to the PR is set, then send a slack notification.
+        if: ${{ steps.create_pr.outputs.pull-request-url != '' }}
+        # SEE: https://github.com/rtCamp/action-slack-notify
+        uses: rtCamp/action-slack-notify@v2.1.0
+        env:
+          # The environment variables is created at << THE SLACK PAGE >>.
+          # registered it on github manually.
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_DEV }}
+          MSG_MINIMAL: true
+          SLACK_CHANNEL: "tech-dbt"
+          SLACK_ICON: "https://ca.slack-edge.com/T0256J926-WLL2QH491-c96809fecb1c-512"
+          SLACK_USERNAME: "GitHub Actions"
+          SLACK_TITLE: "A pull request to merge staging into main was automatically created by GitHub Actions"
+          # `<!here>` is equivalent to `@here`.
+          SLACK_MESSAGE: |
+            <!here> We will merge `staging` into `main` in a little bit.
+            URL: ${{ steps.create_pr.outputs.pull-request-url }}
+          SLACK_FOOTER: ""

@@ -1,0 +1,4 @@
+# GCP projects
+projects:
+  project-a: "project-a-dev"
+  project-b: "project-b-dev"

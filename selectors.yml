@@ -1,0 +1,199 @@
+selectors:
+  # The selector used to select all models and sources.
+  - name: all
+    definition: "*"
+
+  # The selector used to select all dbt sources
+  - name: sources
+    definition: "source:*"
+
+  # The selector is used to select hourly jobs in dev.
+  - name: hourly-dev
+    definition:
+      intersection:
+        - "tag:hourly"
+        - exclude:
+            - 'tag:only_prod'
+            - 'tag:WIP'
+
+  # The selector is used to select hourly jobs in prod.
+  - name: hourly-prod
+    definition:
+      intersection:
+        - "tag:hourly"
+        - exclude:
+            - 'tag:only_dev'
+            - 'tag:WIP'
+
+  # The selector is used to select hourly jobs in dev.
+  - name: hourly-tests-dev
+    definition:
+      intersection:
+        - "tag:hourly_test"
+        - exclude:
+            - 'tag:only_prod'
+            - 'tag:WIP'
+
+  # The selector is used to select hourly jobs in prod.
+  - name: hourly-tests-prod
+    definition:
+      intersection:
+        - "tag:hourly_test"
+        - exclude:
+            - 'tag:only_dev'
+            - 'tag:WIP'
+
+  # The selector is used to select daily jobs in dev.
+  - name: daily-dev
+    definition:
+      intersection:
+        - "tag:daily"
+        - exclude:
+            - 'tag:only_prod'
+            - 'tag:WIP'
+
+  # The selector is used to select daily jobs in prod.
+  - name: daily-prod
+    definition:
+      intersection:
+        - "tag:daily"
+        - exclude:
+            - 'tag:only_dev'
+            - 'tag:WIP'
+
+  # The selector is used to select daily jobs in dev.
+  - name: daily-tests-dev
+    definition:
+      intersection:
+        - "tag:daily_test"
+        - exclude:
+            - 'tag:only_prod'
+            - 'tag:WIP'
+
+  # The selector is used to select daily jobs in prod.
+  - name: daily-tests-prod
+    definition:
+      intersection:
+        - "tag:daily_test"
+        - exclude:
+            - 'tag:only_dev'
+            - 'tag:WIP'
+
+  # The selector is used to select weekly jobs in dev.
+  - name: weekly-dev
+    definition:
+      intersection:
+        - "tag:weekly"
+        - exclude:
+            - 'tag:only_prod'
+            - 'tag:WIP'
+
+  # The selector is used to select weekly jobs in prod.
+  - name: weekly-prod
+    definition:
+      intersection:
+        - "tag:weekly"
+        - exclude:
+            - 'tag:only_dev'
+            - 'tag:WIP'
+
+  # The selector is used to select weekly jobs in dev.
+  - name: weekly-tests-dev
+    definition:
+      intersection:
+        - "tag:weekly_test"
+        - exclude:
+            - 'tag:only_prod'
+            - 'tag:WIP'
+
+  # The selector is used to select weekly jobs in prod.
+  - name: weekly-tests-prod
+    definition:
+      intersection:
+        - "tag:weekly_test"
+        - exclude:
+            - 'tag:only_dev'
+            - 'tag:WIP'
+
+  # The selector is used to select monthly jobs in dev.
+  - name: monthly-dev
+    definition:
+      intersection:
+        - "tag:monthly"
+        - exclude:
+            - 'tag:only_prod'
+            - 'tag:WIP'
+
+  # The selector is used to select monthly jobs in prod.
+  - name: monthly-prod
+    definition:
+      intersection:
+        - "tag:monthly"
+        - exclude:
+            - 'tag:only_dev'
+            - 'tag:WIP'
+
+  # The selector is used to select monthly jobs in dev.
+  - name: monthly-tests-dev
+    definition:
+      intersection:
+        - "tag:monthly_test"
+        - exclude:
+            - 'tag:only_prod'
+            - 'tag:WIP'
+
+  # The selector is used to select monthly jobs in prod.
+  - name: monthly-tests-prod
+    definition:
+      intersection:
+        - "tag:monthly_test"
+        - exclude:
+            - 'tag:only_dev'
+            - 'tag:WIP'
+
+  # The selector is used to release when merge with staging.
+  - name: released-by-ci-dev
+    definition:
+      intersection:
+        - '*'
+        - exclude:
+            - 'tag:only_prod'
+            - 'tag:WIP'
+
+  # The selector is used to release when merge with main.
+  - name: released-by-ci-prod
+    definition:
+      intersection:
+        - '*'
+        - exclude:
+            - 'tag:only_dev'
+            - 'tag:WIP'
+
+  # Select sources whose metadata on BigQuery is updated by dbt-helper.
+  - name: update-source-metadata-prod
+    definition:
+      intersection:
+        - exclude:
+            - 'tag:only_dev'
+            - 'tag:WIP'
+        - union:
+            # NOTE: will limit the scope to avoid errors
+            - 'source:*'
+
+  # Select sources to valid compiled Bigquery queries in dev.
+  - name: validate-compiled-bigquery-queries-dev
+    definition:
+      intersection:
+        - "*"
+        - exclude:
+            - 'tag:only_prod'
+            - 'tag:skip_query_validation'
+
+  # Select sources to valid compiled Bigquery queries in prod.
+  - name: validate-compiled-bigquery-queries-prod
+    definition:
+      intersection:
+        - "*"
+        - exclude:
+            - 'tag:only_dev'
+            - 'tag:skip_query_validation'

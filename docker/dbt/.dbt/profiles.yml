@@ -1,0 +1,32 @@
+# For more information on how to configure this file, please see:
+# https://docs.getdbt.com/docs/profile
+config:
+  partial_parse: True
+  send_anonymous_usage_stats: False
+
+default:
+  target: dev
+  outputs:
+    dev:
+      type: bigquery
+      method: oauth
+      project: YOUR_PROJECT_DEV
+      dataset: "test_dbt"
+      priority: "{{ env_var('DBT_BIGQUERY_PRIORITY', 'interactive') }}"
+      location: "{{ env_var('DBT_BIGQUERY_LOCATION', 'US') }}"
+      # If we quote `{{ env_var() }}`, it is interpreted as integer.
+      # To avoid the situation, we use `|`.
+      threads: |
+        {{ env_var('DBT_THREADS', 10) }}
+
+    prod:
+      type: bigquery
+      method: oauth
+      project: YOUR_PROJECT_PROD
+      dataset: "test_dbt"
+      priority: "{{ env_var('DBT_BIGQUERY_PRIORITY', 'interactive') }}"
+      location: "{{ env_var('DBT_BIGQUERY_LOCATION', 'US') }}"
+      # If we quote `{{ env_var() }}`, it is interpreted as integer.
+      # To avoid the situation, we use `|`.
+      threads: |
+        {{ env_var('DBT_THREADS', 20) }}

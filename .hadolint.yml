@@ -1,0 +1,5 @@
+# SEE https://github.com/hadolint/hadolint#rules
+ignored:
+  - DL3002
+  - DL3008
+  - DL3013

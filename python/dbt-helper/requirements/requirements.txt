@@ -1,0 +1,8 @@
+# The file manages python modules to run dbt-helper.
+
+click==7.1.2
+click-completion==0.5.2
+Jinja2>=2.11
+google-cloud-bigquery<1.26.0,>=1.25.0
+dictdiffer==0.8.1
+ruamel.yaml==0.16.12

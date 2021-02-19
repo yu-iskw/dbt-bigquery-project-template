@@ -1,0 +1,86 @@
+# Reusable YAML anchors
+anchors:
+  gcp-project-for-dbt-jobs-dev: &gcp-project-for-dbt-jobs-dev
+    YOUR_PROJECT_DEV
+  gcp-project-for-dbt-jobs-prod: &gcp-project-for-dbt-jobs-prod
+    YOUR_PROJECT_PROD
+  gcp-project-for-dbt-metadata-prod: &gcp-project-dbt-metadata-prod
+    YOUR_PROJECT_PROD
+
+# For more information on how to configure this file, please see:
+# https://docs.getdbt.com/docs/profile
+config:
+  partial_parse: True
+  send_anonymous_usage_stats: False
+
+default:
+  target: dev
+  outputs:
+    # It is used for local development.
+    dev:
+      type: bigquery
+      method: oauth
+      project: YOUR_PROJECT_LOCAL
+      dataset: "test_dbt"
+      priority: "{{ env_var('DBT_BIGQUERY_PRIORITY', 'interactive') }}"
+      location: "{{ env_var('DBT_BIGQUERY_LOCATION', 'US') }}"
+      # If we quote `{{ env_var() }}`, it is interpreted as string.
+      # To avoid the situation, we use `|`.
+      threads: |
+        {{ env_var('DBT_THREADS', 3) }}
+
+# The profile is used to run dbt jobs in the development and production environment.
+dbt-jobs:
+  target: dev
+  outputs:
+    # The target is for the development environment.
+    dev:
+      type: bigquery
+      method: service-account
+      project: *gcp-project-for-dbt-jobs-dev
+      keyfile: "{{ env_var('GOOGLE_APPLICATION_CREDENTIALS') }}"
+      location: "{{ env_var('DBT_BIGQUERY_LOCATION', 'US') }}"
+      priority: "{{ env_var('DBT_BIGQUERY_PRIORITY', 'batch') }}"
+      dataset: "test_dbt"
+      # If we quote `{{ env_var() }}`, it is interpreted as integer.
+      # To avoid the situation, we use `|`.
+      threads: |
+        {{ env_var('DBT_THREADS', 10) }}
+    # The target is used to run dbt jobs with batch priority of BigQuery.
+    prod-batch:
+      type: bigquery
+      method: service-account
+      project: *gcp-project-for-dbt-jobs-prod
+      keyfile: "{{ env_var('GOOGLE_APPLICATION_CREDENTIALS') }}"
+      location: "{{ env_var('DBT_BIGQUERY_LOCATION', 'US') }}"
+      priority: batch
+      dataset: "test_dbt"
+      threads: 20
+    # The target is used to run dbt jobs with interactive priority of BigQuery.
+    prod-interactive:
+      type: bigquery
+      method: service-account
+      project: *gcp-project-for-dbt-jobs-prod
+      keyfile: "{{ env_var('GOOGLE_APPLICATION_CREDENTIALS') }}"
+      location: "{{ env_var('DBT_BIGQUERY_LOCATION', 'US') }}"
+      priority: interactive
+      dataset: "test_dbt"
+      threads: 2
+
+# The profile is used to write metadata of BigQuery tables.
+dbt-metadata:
+  target: prod
+  outputs:
+    prod:
+      type: bigquery
+      method: service-account
+      project: *gcp-project-dbt-metadata-prod
+      keyfile: "{{ env_var('GOOGLE_APPLICATION_CREDENTIALS') }}"
+      priority: "{{ env_var('DBT_BIGQUERY_PRIORITY', 'interactive') }}"
+      location: "{{ env_var('DBT_BIGQUERY_LOCATION', 'US') }}"
+      dataset: "test_dbt"
+      # If we want to increase concurrency, please change `threads`.
+      # If we quote `{{ env_var() }}`, it is interpreted as integer.
+      # To avoid the situation, we use `|`.
+      threads: |
+        {{ env_var('DBT_THREADS', 20) }}

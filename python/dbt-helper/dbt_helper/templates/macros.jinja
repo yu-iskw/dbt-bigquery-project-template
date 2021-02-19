@@ -1,0 +1,38 @@
+{%- macro generate_reference_id(project, dataset, table) -%}
+{#-
+  The macro is used to generate a reference ID of a table.
+-#}
+{{- '{}__{}__{}'.format(normalize_project_id(project), dataset, table) -}}
+{%- endmacro -%}
+
+
+{%- macro normalize_project_id(project) -%}
+{#-
+  The macro is used to normalize a GCP project ID.
+-#}
+{{- project|replace('-', '_') -}}
+{%- endmacro -%}
+
+
+{%- macro get_var_project(project) -%}
+{#-
+  The macro returns an expression to refer a GCP project.
+-#}
+var('projects')['{{- project -}}']
+{%- endmacro -%}
+
+
+{%- macro get_var_project_or_default(project, default_project="dev_project_id") -%}
+{#-
+  The macro returns an expression to refer a GCP project or the default.
+-#}
+var('projects')['{{- default_project -}}']|default(var('projects')['{{- project -}}'], True)
+{%- endmacro -%}
+
+
+{%- macro to_raw_expression(x) -%}
+{#-
+  The macro is used to convert a given value to a raw expression.
+-#}
+{%- raw -%}{{ {% endraw -%} {{ x }} {% raw -%} }}{%- endraw -%}
+{%- endmacro -%}

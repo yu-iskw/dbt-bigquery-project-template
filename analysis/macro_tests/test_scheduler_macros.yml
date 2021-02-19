@@ -1,0 +1,8 @@
+version: 2
+
+analyses:
+  - name: test_scheduler_macros
+    docs:
+      show: true
+    description: |
+      The dbt analysis is used to test custom macros in `./macros`.

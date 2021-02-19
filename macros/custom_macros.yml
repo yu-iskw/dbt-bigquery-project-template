@@ -1,0 +1,18 @@
+---
+version: 2
+
+macros:
+  - name: already_exists
+    description: |
+      ## Overview
+      It checks if a target table already exist or not.
+      The reason why we implement the macro is that dbt doesn't support ingesting-time partitioned table.
+      But we sometimes want to incrementally update a table which is not a partitioned table.
+
+      ## NOTE
+      * https://docs.getdbt.com/reference/dbt-jinja-functions/adapter/#get_relation
+      * https://docs.getdbt.com/reference/dbt-jinja-functions/adapter/#already_exists
+      * https://github.com/fishtown-analytics/dbt/blob/master/core/dbt/include/global_project/macros/etc/is_incremental.sql
+    docs:
+      show: true
+

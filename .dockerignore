@@ -1,0 +1,16 @@
+# dbt
+logs/
+dbt_modules/
+
+# python
+.tox/
+*.egg-info/
+__pycache__/
+*.pyc
+.tox/
+
+# GCP
+*_credentials.json
+
+# others
+.idea/

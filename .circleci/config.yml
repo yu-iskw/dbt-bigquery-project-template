@@ -1,0 +1,1380 @@
+---
+version: 2.1
+
+#
+# CircleCI orbs
+#
+orbs:
+  # SEE: https://circleci.com/developer/orbs/orb/circleci/slack?version=3.4.2
+  slack: circleci/slack@3.4.2
+
+#
+# Custom reusable references
+#
+references:
+  # The shared environment variables attached to a docker container.
+  common_env_vars: &common_env_vars
+    # Tne env var is required to execute dbt
+    GOOGLE_APPLICATION_CREDENTIALS: "/tmp/credentials.json"
+  # The working directory to store cloned sources.
+  working_directory: &working_directory
+    /workspace/project
+  # The directory to share artifacts of dbt across jobs.
+  dbt_workspace: &dbt_workspace
+    /workspace/dbt
+  # The slack channel to send notifications
+  default_slack_channel: &default_slack_channel
+    "#tech-dbt"
+  # The value is set to `no_output_timeout`.
+  # SEE: https://circleci.com/docs/2.0/configuration-reference/#run
+  default_no_output_timeout: &default_no_output_timeout
+    150m
+  # A list of docker tags to specify python image.
+  # SEE: 'executors.python-image'
+  python_image_tags_for_dbt_helper: &default_image_tags_for_dbt-helper
+    - "3.7"
+    - "3.8"
+  # Referable paths to dbt vars YAML files.
+  vars_paths:
+    vars_path_dev: &vars_path_dev
+      "./config/dev/vars.yml"
+    vars_path_prod: &vars_path_prod
+       "./config/prod/vars.yml"
+
+#
+# CircleCI executors
+#
+executors:
+  python-image:
+    parameters:
+      tag:
+        description: "python docker image tag"
+        type: string
+    working_directory: *working_directory
+    docker:
+      - image: python:<< parameters.tag >>
+        environment:
+          <<: *common_env_vars
+  google-cloud-sdk-image:
+    working_directory: *working_directory
+    docker:
+      - image: google/cloud-sdk:317.0.0
+        environment:
+          <<: *common_env_vars
+  hadolint-image:
+    working_directory: *working_directory
+    docker:
+      - image: hadolint/hadolint:v1.19.0
+
+#
+# CircleCI commands
+#
+commands:
+  setup-google-cloud-sdk-image-command:
+    # TODO specify python version
+    description: "steps to set up google-cloud-sdk-image executor"
+    steps:
+      - run:
+          name: Install libraries
+          command: |
+            apt-get update -y \
+                && apt-get install -y build-essential yamllint \
+                python3 python3-dev python3-pip shellcheck jq
+      - run:
+          name: Set up the project.
+          command: make setup
+  setup-python-image-command:
+    description: "steps to set up python-image executor"
+    steps:
+      - run:
+          name: Install libraries
+          command: |
+            apt-get update -y \
+                && apt-get install -y build-essential yamllint shellcheck jq
+      - run:
+          name: Set up the project.
+          command: make setup
+  store-dbt-targets-to-artifacts-command:
+    description: "Store dbt targets to CircleCI artifacts"
+    steps:
+      - run:
+          name: Compress the dbt target directory to store artifacts
+          command: |
+            # Create dummy files to surely create the compressed files
+            mkdir -p ./{target,logs}
+            touch ./{target,logs}/.dummy
+            # Compress the directories
+            tar -zcvf /tmp/target.tar.gz ./target
+            tar -zcvf /tmp/logs.tar.gz ./logs
+      - store_artifacts:
+          path: /tmp/target.tar.gz
+          destination: target.tar.gz
+      - store_artifacts:
+          path: /tmp/logs.tar.gz
+          destination: logs.tar.gz
+  copy-dbt-target-command:
+    description: "Copy generated dbt target directory from workspace"
+    steps:
+      - run:
+          name: Copy generated dbt target directory from workspace
+          command: |
+            rm -fr ./target
+            cp -R /workspace/dbt/target .
+            bash ./ci/check_target.sh
+  activate-gcp-service-account-command:
+    description: "Activate a GCP service account with a registered environment variable"
+    parameters:
+      env_var:
+        type: string
+        description: "Environment variables contains credentials of a GCP service account"
+    steps:
+      - run:
+          name: Activate GCP service account with << parameters.env_var >>
+          command: |
+            # Create a credentials file
+            echo "${<< parameters.env_var >>:?}" > "$GOOGLE_APPLICATION_CREDENTIALS"
+            # Activate the service account
+            cat "$GOOGLE_APPLICATION_CREDENTIALS" | gcloud auth activate-service-account --key-file=-
+            gcloud auth configure-docker --quiet
+  validate-compiled-bigquery-queries-command:
+    description: "Validate SQL files compiled by dbt."
+    parameters:
+      scope:
+        description: "scope of dbt resources"
+        type: enum
+        enum: ["all", "changed"]
+      gcp-project-id:
+        description: "GCP project to run dbt"
+        type: string
+      target:
+        description: "dbt target"
+        type: string
+      vars_path:
+        description: "path to a dbt vars YAML file"
+        type: string
+      selector:
+        description: "dbt selector"
+        type: string
+      ignore-schema-tests:
+        description: "flag to ignore schema tests"
+        type: enum
+        enum: ["0", "1"]
+        default: "1"
+    steps:
+      - run:
+          name: "Compile dbt resources with the << parameters.selector >> selector"
+          command: |
+            scope="<< parameters.scope >>"
+            target="<< parameters.target >>"
+            selector="<< parameters.selector >>"
+            vars_path="<< parameters.vars_path >>"
+            execution_date="$(date --date '1 day ago' '+%Y-%m-%dT00:00')"
+
+            # Compile dbt resources
+            if [[ "$scope" == "changed" ]] ; then
+              # Compile dbt models which are only changed.
+              echo "Compile partial models"
+              bash ./ci/execute_dbt_only_updated.sh \
+                  "compile" "$target" "$selector" "$vars_path" "$execution_date"
+            else
+              # Compile all dbt models.
+              echo "Compile all models by a selector."
+              bash ./ci/execute_dbt.sh \
+                  "compile" "$target" "$vars_path" "$selector" "$execution_date"
+            fi
+      - run:
+          name: "Validate compiled SQL files with the << parameters.selector >> selector"
+          # Always run the step, even if the compilation was failed.
+          # NOTE: The CircleCI job was stopped, even if exit status
+          #       of `execute_dbt_only_updated.sh` was 0 when there is no changed files.
+          when: always
+          command: |
+            # Validate compiled queries
+            gcp_project_id="<< parameters.gcp-project-id >>"
+            ignore_schema_tests=<< parameters.ignore-schema-tests >>
+            input_dir="./target/compiled"
+            bash ./ci/validate_bq_queries.sh \
+                "$input_dir" "$ignore_schema_tests" "$gcp_project_id"
+  check-diff-files-to-halt-command:
+    description: "halt CircleCI step if there is any files matched with a pattern"
+    parameters:
+      pattern:
+        description: "regular expression to filter changed files"
+        type: string
+    steps:
+      - run:
+          name: "halt CircleCI step if there is any files matched with a pattern"
+          command: |
+            # `|| :` is used to avoid exit when there is no changed file which matches the pattern.
+            changed_files=$(bash ./ci/get_changed_files.sh "<< parameters.pattern >>" || :)
+            num_changed_files=$(echo "$changed_files" | grep -v -e '^\s*$' | wc -l || :)
+            if [[ $num_changed_files -eq 0 ]] ; then
+              echo "Halt due to no changed file"
+              circleci step halt
+            else
+              echo "Changed files match the pattern << parameters.pattern >>"
+              echo $changed_files
+            fi
+  send-failure-status-to-slack-command:
+    description: "Send a failure message to slack"
+    parameters:
+      webhook:
+        description: "slack webhook URL"
+        type: string
+        default: "${SLACK_WEBHOOK}"
+      channel:
+        description: "slack channel"
+        type: string
+        default: *default_slack_channel
+      mentions:
+        description: "slack mentions"
+        type: string
+        default: "here"
+      failure-message:
+        description: "failure message"
+        type: string
+        default: |
+          branch: ${CIRCLE_BRANCH}
+          build URL: ${CIRCLE_BUILD_URL}
+    steps:
+      - slack/status:
+          fail_only: true
+          webhook: << parameters.webhook >>
+          channel: << parameters.channel >>
+          mentions: << parameters.mentions >>
+          failure_message: << parameters.failure-message >>
+
+#
+# jobs
+#
+jobs:
+
+  test-basics:
+    executor: google-cloud-sdk-image
+    steps:
+      - checkout
+      - check-diff-files-to-halt-command:
+          pattern: "\\.sh$"
+      - setup-google-cloud-sdk-image-command
+      - run:
+          name: Run shellcheck
+          command: |
+            make lint-shell
+
+  lint-dockerfiles:
+    executor: hadolint-image
+    steps:
+      - run:
+          name: Install libraries
+          command: |
+            apk update && apk add --update bash openssh-client git
+      - checkout
+      - run:
+          name: Run hadolint
+          command: |
+            bash ./ci/lint_dockerfiles.sh
+
+  check-selectors:
+    executor: google-cloud-sdk-image
+    steps:
+      - checkout
+      - check-diff-files-to-halt-command:
+          pattern: "^selectors.yml$"
+      - setup-google-cloud-sdk-image-command
+      - activate-gcp-service-account-command:
+          env_var: GOOGLE_APPLICATION_CREDENTIALS_DBT_METADATA_PROD
+      - run:
+          name: Check if each selectors has any dbt models
+          command: |
+            bash ./ci/check_dbt_selectors.sh
+
+  # A job to validate SQL queries and GCP permissions.
+  # TODO: Parallelize validations. CircleCI enables us to run tests in parallel.
+  validate-compiled-bigquery-queries:
+    parameters:
+      service_account_env_var:
+        description: "GCP service account environment variable"
+        type: string
+      scope:
+        description: "scope of dbt resources"
+        type: enum
+        enum: ["all", "changed"]
+      gcp-project-id:
+        description: "GCP project to run dbt"
+        type: string
+      target:
+        description: "dbt target"
+        type: string
+      vars_path:
+        description: "path to a dbt vars YAML file"
+        type: string
+      selector:
+        description: "dbt selector"
+        type: string
+      ignore-schema-tests:
+        description: "flag to ignore schema tests"
+        type: enum
+        enum: ["0", "1"]
+        default: "1"
+    executor: google-cloud-sdk-image
+    steps:
+      - checkout
+      - setup-google-cloud-sdk-image-command
+      # Validate queries for the development environment
+      - activate-gcp-service-account-command:
+          env_var: << parameters.service_account_env_var >>
+      - validate-compiled-bigquery-queries-command:
+          scope: << parameters.scope >>
+          gcp-project-id: << parameters.gcp-project-id >>
+          target: << parameters.target >>
+          vars_path: << parameters.vars_path >>
+          selector: << parameters.selector >>
+          ignore-schema-tests: << parameters.ignore-schema-tests>>
+
+  generate-docs:
+    executor: google-cloud-sdk-image
+    # Use a large resource to generate docs with multi-threads
+    resource_class: large
+    steps:
+      - checkout
+      - setup-google-cloud-sdk-image-command
+      - activate-gcp-service-account-command:
+          env_var: GOOGLE_APPLICATION_CREDENTIALS_DBT_METADATA_PROD
+      - run:
+          name: Validate YAML files
+          command: |
+            bash ./ci/lint_yaml.sh
+            bash ./ci/check_dbt_sources.sh
+      - run:
+          name: Test generating docs with prod data
+          command: |
+            # TODO If the elapsed time gets much longger, we should test only updated resources.
+            bash ./ci/dbt_docs_generate.sh
+      - run:
+          name: Copy dbt target to persistent workspace
+          command: |
+            # Initialize target
+            export target_dir="/workspace/dbt/target"
+            rm -fr "$target_dir" && mkdir -p "$target_dir"
+            cp -R ./target/* "$target_dir"
+      - store-dbt-targets-to-artifacts-command
+      - persist_to_workspace:
+          root: *dbt_workspace
+          paths:
+            - target
+
+  build-dbt-staging:
+    executor: google-cloud-sdk-image
+    steps:
+      - checkout
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - attach_workspace:
+          at: *dbt_workspace
+      - copy-dbt-target-command
+      - activate-gcp-service-account-command:
+          env_var: GOOGLE_APPLICATION_CREDENTIALS_DBT_GCR_PROD
+      - run:
+          name: Build and push docker image with dbt in dev
+          command: |
+            # Get a short git commit hash
+            # SEE https://git-scm.com/docs/git-rev-parse
+            COMMIT_REF=$(git rev-parse --short HEAD)
+            bash ./ci/build_dbt_docker.sh "push" "prod" "staging-${COMMIT_REF:?}"
+
+  build-dbt-main:
+    executor: google-cloud-sdk-image
+    steps:
+      - checkout
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - attach_workspace:
+          at: *dbt_workspace
+      - copy-dbt-target-command
+      - activate-gcp-service-account-command:
+          env_var: GOOGLE_APPLICATION_CREDENTIALS_DBT_GCR_PROD
+      - run:
+          name: Build and push docker image with dbt in prod
+          command: |
+            # Get a short git commit hash
+            # SEE https://git-scm.com/docs/git-rev-parse
+            COMMIT_REF=$(git rev-parse --short HEAD)
+            bash ./ci/build_dbt_docker.sh "push" "prod" "main-${COMMIT_REF:?}"
+            bash ./ci/build_dbt_docker.sh "push" "prod" "latest"
+
+  test-dbt-helper:
+    parameters:
+      python_image_tag:
+        description: "python docker image tag"
+        type: string
+        default: "3.8"
+    executor:
+      name: python-image
+      tag: << parameters.python_image_tag >>
+    steps:
+      - checkout
+      - check-diff-files-to-halt-command:
+          pattern: "^python/dbt-helper"
+      - setup-python-image-command
+      - run:
+          name: Set up
+          command: |
+            cd ./python/dbt-helper
+            make setup
+      - run:
+          name: Lint
+          command: |
+            cd ./python/dbt-helper
+            make lint-shell
+#      - run:
+#          name: Find unsecure modules with safety
+#          command: |
+#            cd ./python/dbt-helper
+#            make safety
+      - run:
+          name: Run unit tests
+          command: |
+            cd ./python/dbt-helper
+            make test
+      - run:
+          name: Test installation
+          command: |
+            cd ./python/dbt-helper
+            pip3 install --no-cache-dir -e .
+
+  build-dbt-helper-staging:
+    executor: google-cloud-sdk-image
+    steps:
+      - checkout
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - activate-gcp-service-account-command:
+          env_var: GOOGLE_APPLICATION_CREDENTIALS_DBT_GCR_PROD
+      - run:
+          name: Build and push docker image with dbt in dev
+          command: |
+            # Get a short git commit hash
+            # SEE https://git-scm.com/docs/git-rev-parse
+            COMMIT_REF=$(git rev-parse --short HEAD)
+            bash ./ci/build_dbt-helper_docker.sh "push" "prod" "staging-${COMMIT_REF}"
+
+  build-dbt-helper-main:
+    executor: google-cloud-sdk-image
+    steps:
+      - checkout
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - activate-gcp-service-account-command:
+          env_var: GOOGLE_APPLICATION_CREDENTIALS_DBT_GCR_PROD
+      - run:
+          name: Build and push docker image with dbt in prod
+          command: |
+            # Get a short git commit hash
+            # SEE https://git-scm.com/docs/git-rev-parse
+            COMMIT_REF=$(git rev-parse --short HEAD)
+            bash ./ci/build_dbt-helper_docker.sh "push" "prod" "main-${COMMIT_REF}"
+            bash ./ci/build_dbt-helper_docker.sh "push" "prod" "latest"
+
+  release:
+    parameters:
+      service_account_env_var:
+        description: "GCP service account environment variable"
+        type: string
+      target:
+        description: "dbt target"
+        type: string
+      vars_path:
+        description: "path to a dbt vars YAML file"
+        type: string
+      selector:
+        description: "dbt selector"
+        type: string
+      no_output_timeout:
+        description: "CircleCI no_output_timeout option"
+        type: string
+        default: *default_no_output_timeout
+    executor: google-cloud-sdk-image
+    steps:
+      - checkout
+      - setup-google-cloud-sdk-image-command
+      - activate-gcp-service-account-command:
+          env_var: << parameters.service_account_env_var >>
+      - run:
+          name: Drop disabled models
+          command: |
+            # Compile dbt to create artifacts including manifest.json
+            target="<< parameters.target >>"
+            selector="all"
+            vars_path="<< parameters.vars_path >>"
+            execution_date="$(date --date '1 day ago' '+%Y-%m-%dT00:00')"
+            bash ./ci/execute_dbt.sh \
+                  "compile" "$target" "$vars_path" "$selector" "$execution_date"
+
+            # Drop disabled models with << parameters.service_account_env_var >>
+            # NOTE: We expect use the default GCP client project of a service account.
+            #       So, it is ok not to pass a specific client_project value.
+            dry_run=0
+            bash ./ci/drop_disabled_models.sh $dry_run
+      - run:
+          name: Create changed tables and views with `dbt run` in << parameters.target >>
+          no_output_timeout: << parameters.no_output_timeout >>
+          command: |
+            target="<< parameters.target >>"
+            vars_path="<< parameters.vars_path >>"
+            selector="<< parameters.selector >>"
+            execution_date="$(date --date '1 day ago' '+%Y-%m-%dT00:00')"
+            bash ./ci/execute_dbt_only_updated.sh \
+                "run" "$target" "$selector" "$vars_path" "$execution_date"
+      - run:
+          name: Test changed tables and views with `dbt test` in << parameters.target >>
+          no_output_timeout: << parameters.no_output_timeout >>
+          command: |
+            target="<< parameters.target >>"
+            vars_path="<< parameters.vars_path >>"
+            selector="<< parameters.selector >>"
+            execution_date="$(date --date '1 day ago' '+%Y-%m-%dT00:00')"
+            bash ./ci/execute_dbt_only_updated.sh \
+                "test" "$target" "$selector" "$vars_path" "$execution_date"
+      - store-dbt-targets-to-artifacts-command
+      - send-failure-status-to-slack-command:
+          failure-message: |
+            Failed to release
+            - target: << parameters.target >>
+            - selector: << parameters.selector >>
+            - git branch: ${CIRCLE_BRANCH}
+            - CircleCI: ${CIRCLE_BUILD_URL}
+
+  check-source-freshness-main:
+    parameters:
+      service_account_env_var:
+        description: "GCP service account environment variable"
+        type: string
+      target:
+        description: "dbt profile target"
+        type: string
+        default: "prod-batch"
+      vars_path:
+        description: "path to a dbt vars YAML file"
+        type: string
+        default: *vars_path_prod
+      send-notification:
+        description: "flag to send slack slack notification or not"
+        type: boolean
+        default: true
+      no_output_timeout:
+        description: "CircleCI no_output_timeout option"
+        type: string
+        default: *default_no_output_timeout
+    executor: google-cloud-sdk-image
+    steps:
+      - checkout
+      - setup-google-cloud-sdk-image-command
+      - activate-gcp-service-account-command:
+          env_var: << parameters.service_account_env_var >>
+      - run:
+          name: Execute `dbt source snapshot-freshness` in prod
+          no_output_timeout: << parameters.no_output_timeout >>
+          command: |
+            target="<< parameters.target >>"
+            vars_path="<< parameters.vars_path >>"
+            bash ./ci/execute_snapshot_freshness.sh "$target" "$vars_path"
+      - store-dbt-targets-to-artifacts-command
+      - send-failure-status-to-slack-command:
+          failure-message: |
+            Failed to check data freshness
+            - target: << parameters.target >>
+            - vars_path: << parameters.vars_path >>
+            - CircleCI: $CIRCLE_BUILD_URL
+            - git branch: ${CIRCLE_BRANCH}
+
+  execute-dbt:
+    parameters:
+      service_account_env_var:
+        description: "GCP service account environment variable"
+        type: string
+      target:
+        description: "dbt target"
+        type: string
+      vars_path:
+        description: "path to a dbt vars YAML file"
+        type: string
+      selector:
+        description: "dbt selector"
+        type: string
+      dbt_subcommand:
+        description: "subcommand of dbt CLI"
+        type: string
+      no_output_timeout:
+        description: "CircleCI no_output_timeout option"
+        type: string
+        default: *default_no_output_timeout
+    executor: google-cloud-sdk-image
+    steps:
+      - checkout
+      - run:
+          name: Halt if a trigger is a pull request
+          command: |
+            # The job can be triggered, when merging staging with main.
+            # So, if a trigger is a pull request not scheduled workflow, then stop it.
+            if [[ -n ${CIRCLE_PR_NUMBER} ]] ; then
+              circleci step halt
+            fi
+      - setup-google-cloud-sdk-image-command
+      - activate-gcp-service-account-command:
+          env_var: << parameters.service_account_env_var >>
+      - run:
+          name: Create tables and views with `dbt run`
+          no_output_timeout: << parameters.no_output_timeout >>
+          command: |
+            target="<< parameters.target >>"
+            selector="<< parameters.selector >>"
+            vars_path="<< parameters.vars_path >>"
+            dbt_subcommand="<< parameters.dbt_subcommand >>"
+            execution_date="$(date --date '1 day ago' '+%Y-%m-%dT00:00')"
+            bash ./ci/execute_dbt.sh "$dbt_subcommand" "$target" "$vars_path" "$selector" "$execution_date"
+      - store-dbt-targets-to-artifacts-command
+      - send-failure-status-to-slack-command:
+          failure-message: |
+            Failed to run 'dbt << parameters.dbt_subcommand >>'
+            - git branch: ${CIRCLE_BRANCH}
+            - target: << parameters.target >>
+            - vars_path: << parameters.vars_path >>
+            - selector: << parameters.selector >>
+            - CircleCI: ${CIRCLE_BUILD_URL}
+
+  update-dbt-source-metadata-main:
+    parameters:
+      client_project:
+        description: "GCP project for BigQuery client"
+        type: string
+        default: ""
+      target:
+        description: "dbt target"
+        type: string
+        default: "prod"
+      vars_path:
+        description: "path to a dbt vars YAML file"
+        type: string
+        default: *vars_path_prod
+      selector:
+        description: "dbt selector"
+        type: string
+        default: "update-source-metadata-prod"
+      send-notification:
+        description: "flag to send slack slack notification or not"
+        type: boolean
+        default: true
+    executor: google-cloud-sdk-image
+    steps:
+      - checkout
+      - setup-google-cloud-sdk-image-command
+      - activate-gcp-service-account-command:
+          env_var: GOOGLE_APPLICATION_CREDENTIALS_DBT_METADATA_PROD
+      - run:
+          name: Update metadata of existing BigQuery tables with dbt sources
+          command: |
+            models_dir="./models"
+            target="<< parameters.target >>"
+            vars_path="<< parameters.vars_path >>"
+            selector="<< parameters.selector >>"
+            dry_run=0
+            bash ./ci/update_bq_table_metadata_with_sources.sh \
+                "$models_dir" "$target" "$vars_path" "$selector" $dry_run
+      - run:
+          name: Update metadata of existing BigQuery datasets with dbt sources
+          command: |
+            models_dir="./models"
+            vars_path="<< parameters.vars_path >>"
+            client_project="<< parameters.client_project >>"
+            dry_run=0
+            bash ./ci/update_bq_dataset_metadata_with_sources.sh \
+                "$models_dir" "$vars_path" "$client_project" $dry_run
+      - send-failure-status-to-slack-command:
+          failure-message: |
+            Failed to update metadata of existing tables/views with a scheduled job
+            - selector: << parameters.selector >>
+            - CircleCI: $CIRCLE_BUILD_URL
+            - git branch: ${CIRCLE_BRANCH}
+
+#
+# Workflows
+#
+workflows:
+  version: 2.1
+
+  # workflow for dbt on the main branch
+  dbt-main:
+    jobs:
+      - test-basics:
+          filters:
+            branches:
+              only: main
+      - lint-dockerfiles:
+          filters:
+            branches:
+              only: main
+      - check-selectors:
+          filters:
+            branches:
+              only: main
+      - generate-docs:
+          filters:
+            branches:
+              only: main
+      - build-dbt-main:
+          filters:
+            branches:
+              only: main
+          requires:
+            - test-basics
+            - lint-dockerfiles
+            - check-selectors
+            - generate-docs
+      - release:
+          name: release-main
+          service_account_env_var: GOOGLE_APPLICATION_CREDENTIALS_DBT_JOB_PROD
+          target: "prod-batch"
+          vars_path: *vars_path_prod
+          selector: "released-by-ci-prod"
+          filters:
+            branches:
+              only: main
+          requires:
+            - test-basics
+            - lint-dockerfiles
+            - check-selectors
+            - generate-docs
+      - update-dbt-source-metadata-main:
+          filters:
+            branches:
+              only: main
+          requires:
+            - test-basics
+            - lint-dockerfiles
+            - check-selectors
+            - generate-docs
+
+  # workflow for dbt on any branches and tags other than the main branch.
+  dbt-except-main:
+    jobs:
+      - test-basics:
+          filters:
+            branches:
+              ignore: main
+            tags:
+              ignore: /.*/
+      - lint-dockerfiles:
+          filters:
+            branches:
+              ignore: main
+            tags:
+              ignore: /.*/
+      - check-selectors:
+          filters:
+            branches:
+              ignore: main
+            tags:
+              ignore: /.*/
+      - generate-docs:
+          filters:
+            branches:
+              ignore: main
+            tags:
+              ignore: /.*/
+      - validate-compiled-bigquery-queries:
+          name: validate-compiled-bigquery-queries-dev
+          service_account_env_var: GOOGLE_APPLICATION_CREDENTIALS_DBT_JOB_DEV
+          gcp-project-id: "YOUR_PROJECT_DEV"
+          scope: "changed"
+          target: "dev"
+          vars_path: *vars_path_dev
+          selector: "validate-compiled-bigquery-queries-dev"
+          ignore-schema-tests: "1"
+          filters:
+            branches:
+              ignore: main
+            tags:
+              ignore: /.*/
+      - validate-compiled-bigquery-queries:
+          name: validate-compiled-bigquery-queries-prod
+          service_account_env_var: GOOGLE_APPLICATION_CREDENTIALS_DBT_JOB_PROD
+          gcp-project-id: "YOUR_PROJECT_PROD"
+          scope: "changed"
+          target: "prod-batch"
+          vars_path: *vars_path_prod
+          selector: "validate-compiled-bigquery-queries-prod"
+          ignore-schema-tests: "1"
+          filters:
+            branches:
+              ignore: main
+            tags:
+              ignore: /.*/
+      - build-dbt-staging:
+          filters:
+            branches:
+              only: staging
+            tags:
+              ignore: /.*/
+          requires:
+            - test-basics
+            - lint-dockerfiles
+            - check-selectors
+            - generate-docs
+            - validate-compiled-bigquery-queries-dev
+            - validate-compiled-bigquery-queries-prod
+      - release:
+          # Triggered only when merging to staging
+          name: release-staging
+          service_account_env_var: GOOGLE_APPLICATION_CREDENTIALS_DBT_JOB_DEV
+          target: "dev"
+          vars_path: *vars_path_dev
+          selector: "released-by-ci-dev"
+          filters:
+            branches:
+              only: staging
+            tags:
+              ignore: /.*/
+          requires:
+            - test-basics
+            - lint-dockerfiles
+            - check-selectors
+            - generate-docs
+            - validate-compiled-bigquery-queries-dev
+            - validate-compiled-bigquery-queries-prod
+
+  # workflow for dbt-helper
+  dbt-helper:
+    jobs:
+      - test-dbt-helper:
+          matrix:
+            parameters:
+              python_image_tag: *default_image_tags_for_dbt-helper
+          filters:
+            branches:
+              only: /.*/
+            tags:
+              only: /.*/
+      - build-dbt-helper-staging:
+          # Triggered only when merging to staging
+          filters:
+            branches:
+              only: staging
+            tags:
+              ignore: /.*/
+          requires:
+            - test-dbt-helper
+      - build-dbt-helper-main:
+          # Triggered only when tagged
+          filters:
+            branches:
+              only: main
+            tags:
+              ignore: /.*/
+          requires:
+            - test-dbt-helper
+  # Hourly scheduler in dev
+  # NOTE: The workflow can be triggered, when merging staging with main.
+  hourly-dev:
+    triggers:
+      - schedule:
+          # The timezone is UTC.
+          # NOTE: run once per day to avoid consuming BigQuery slots too much
+          cron: "15 13 * * 1-5"
+          filters:
+            branches:
+              only:
+                - staging
+    jobs:
+      # Corresponding to `dbt run`
+      - execute-dbt:
+          name: dbt-models-scheduler
+          dbt_subcommand: run
+          service_account_env_var: GOOGLE_APPLICATION_CREDENTIALS_DBT_JOB_DEV
+          target: "dev"
+          vars_path: *vars_path_dev
+          selector: "hourly-dev"
+      # Corresponding to `dbt snapshot`
+      - execute-dbt:
+          name: dbt-snapshots-scheduler
+          dbt_subcommand: snapshot
+          service_account_env_var: GOOGLE_APPLICATION_CREDENTIALS_DBT_JOB_DEV
+          target: "dev"
+          vars_path: *vars_path_dev
+          selector: "hourly-dev"
+          requires:
+            - dbt-models-scheduler
+      # Corresponding to `dbt test`
+      - execute-dbt:
+          name: dbt-tests-scheduler
+          dbt_subcommand: test
+          service_account_env_var: GOOGLE_APPLICATION_CREDENTIALS_DBT_JOB_DEV
+          target: "dev"
+          vars_path: *vars_path_dev
+          selector: "hourly-tests-dev"
+          requires:
+            - dbt-models-scheduler
+  # Hourly scheduler in prod
+  hourly-prod:
+    triggers:
+      - schedule:
+          # The timezone is UTC.
+          # We execute it twice a day first just in case.
+          cron: "30 * * * *"
+          filters:
+            branches:
+              only:
+                - main
+    jobs:
+      # Corresponding to `dbt run`
+      - execute-dbt:
+          name: dbt-models-scheduler
+          dbt_subcommand: run
+          service_account_env_var: GOOGLE_APPLICATION_CREDENTIALS_DBT_JOB_PROD
+          target: "prod-batch"
+          vars_path: *vars_path_prod
+          selector: "hourly-prod"
+          # To avoid interfering the next hourly job, it is 60m.
+          no_output_timeout: 60m
+      # Corresponding to `dbt snapshot`
+      - execute-dbt:
+          name: dbt-snapshots-scheduler
+          dbt_subcommand: snapshot
+          service_account_env_var: GOOGLE_APPLICATION_CREDENTIALS_DBT_JOB_PROD
+          target: "prod-batch"
+          vars_path: *vars_path_prod
+          selector: "hourly-prod"
+          # To avoid interfering the next hourly job, it is 60m.
+          no_output_timeout: 60m
+          requires:
+            - dbt-models-scheduler
+      # Corresponding to `dbt test`
+      - execute-dbt:
+          name: dbt-tests-scheduler
+          dbt_subcommand: test
+          service_account_env_var: GOOGLE_APPLICATION_CREDENTIALS_DBT_JOB_PROD
+          target: "prod-batch"
+          vars_path: *vars_path_prod
+          selector: "hourly-tests-prod"
+          # To avoid interfering the next hourly job, it is 60m.
+          no_output_timeout: 60m
+          requires:
+            - dbt-models-scheduler
+  # Hourly scheduler in prod, tagging 'hourly-prod/.*'
+  hourly-prod-by-tag:
+    jobs:
+      # Corresponding to `dbt run`
+      - execute-dbt:
+          name: dbt-models-scheduler
+          dbt_subcommand: run
+          service_account_env_var: GOOGLE_APPLICATION_CREDENTIALS_DBT_JOB_PROD
+          target: "prod-batch"
+          vars_path: *vars_path_prod
+          selector: "hourly-prod"
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /hourly-prod\/.*/
+      # Corresponding to `dbt snapshot`
+      - execute-dbt:
+          name: dbt-snapshots-scheduler
+          dbt_subcommand: snapshot
+          service_account_env_var: GOOGLE_APPLICATION_CREDENTIALS_DBT_JOB_PROD
+          target: "prod-batch"
+          vars_path: *vars_path_prod
+          selector: "hourly-prod"
+          requires:
+            - dbt-models-scheduler
+      # Corresponding to `dbt test`
+      - execute-dbt:
+          name: dbt-tests-scheduler
+          dbt_subcommand: test
+          service_account_env_var: GOOGLE_APPLICATION_CREDENTIALS_DBT_JOB_PROD
+          target: "prod-batch"
+          vars_path: *vars_path_prod
+          selector: "hourly-tests-prod"
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /hourly-prod\/.*/
+          requires:
+            - dbt-models-scheduler
+  # Daily scheduler in dev
+  # NOTE: The workflow can be triggered, when merging staging with main.
+  daily-dev:
+    triggers:
+      - schedule:
+          # The timezone is UTC.
+          # We execute it twice a day first just in case.
+          cron: "0 14 * * *"
+          filters:
+            branches:
+              only:
+                - staging
+    jobs:
+      # Corresponding to `dbt run`
+      - execute-dbt:
+          name: dbt-models-scheduler
+          dbt_subcommand: run
+          service_account_env_var: GOOGLE_APPLICATION_CREDENTIALS_DBT_JOB_DEV
+          target: "dev"
+          vars_path: *vars_path_dev
+          selector: "daily-dev"
+      # Corresponding to `dbt snapshot`
+      - execute-dbt:
+          name: dbt-snapshots-scheduler
+          dbt_subcommand: snapshot
+          service_account_env_var: GOOGLE_APPLICATION_CREDENTIALS_DBT_JOB_DEV
+          target: "dev"
+          vars_path: *vars_path_dev
+          selector: "daily-dev"
+          requires:
+            - dbt-models-scheduler
+      # Corresponding to `dbt test`
+      - execute-dbt:
+          name: dbt-tests-scheduler
+          dbt_subcommand: test
+          service_account_env_var: GOOGLE_APPLICATION_CREDENTIALS_DBT_JOB_DEV
+          target: "dev"
+          vars_path: *vars_path_dev
+          selector: "daily-tests-dev"
+          requires:
+            - dbt-models-scheduler
+  # Daily scheduler in prod
+  daily-prod:
+    triggers:
+      - schedule:
+          # The timezone is UTC.
+          # We execute it twice a day first just in case.
+          cron: "0 4,16 * * *"
+          filters:
+            branches:
+              only:
+                - main
+    jobs:
+      - update-dbt-source-metadata-main
+      - check-source-freshness-main:
+          service_account_env_var: GOOGLE_APPLICATION_CREDENTIALS_DBT_JOB_PROD
+      # Corresponding to `dbt run`
+      - execute-dbt:
+          name: dbt-models-scheduler
+          dbt_subcommand: run
+          service_account_env_var: GOOGLE_APPLICATION_CREDENTIALS_DBT_JOB_PROD
+          target: "prod-batch"
+          vars_path: *vars_path_prod
+          selector: "daily-prod"
+      # Corresponding to `dbt snapshot`
+      - execute-dbt:
+          name: dbt-snapshots-scheduler
+          dbt_subcommand: snapshot
+          service_account_env_var: GOOGLE_APPLICATION_CREDENTIALS_DBT_JOB_PROD
+          target: "prod-batch"
+          vars_path: *vars_path_prod
+          selector: "daily-prod"
+          requires:
+            - dbt-models-scheduler
+      # Corresponding to `dbt test`
+      - execute-dbt:
+          name: dbt-tests-scheduler
+          dbt_subcommand: test
+          service_account_env_var: GOOGLE_APPLICATION_CREDENTIALS_DBT_JOB_PROD
+          target: "prod-batch"
+          vars_path: *vars_path_prod
+          selector: "daily-tests-prod"
+          requires:
+            - dbt-models-scheduler
+  # Daily scheduler in prod, tagging 'daily-prod/.*'
+  daily-prod-by-tag:
+    jobs:
+      # Corresponding to `dbt run`
+      - execute-dbt:
+          name: dbt-models-scheduler
+          dbt_subcommand: run
+          service_account_env_var: GOOGLE_APPLICATION_CREDENTIALS_DBT_JOB_PROD
+          target: "prod-batch"
+          vars_path: *vars_path_prod
+          selector: "daily-prod"
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /daily-prod\/.*/
+      # Corresponding to `dbt snapshot`
+      - execute-dbt:
+          name: dbt-snapshots-scheduler
+          dbt_subcommand: snapshot
+          service_account_env_var: GOOGLE_APPLICATION_CREDENTIALS_DBT_JOB_PROD
+          target: "prod-batch"
+          vars_path: *vars_path_prod
+          selector: "daily-prod"
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /daily-prod\/.*/
+          requires:
+            - dbt-models-scheduler
+      # Corresponding to `dbt test`
+      - execute-dbt:
+          name: dbt-tests-scheduler
+          dbt_subcommand: test
+          service_account_env_var: GOOGLE_APPLICATION_CREDENTIALS_DBT_JOB_PROD
+          target: "prod-batch"
+          vars_path: *vars_path_prod
+          selector: "daily-tests-prod"
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /daily-prod\/.*/
+          requires:
+            - dbt-models-scheduler
+  # Weekly scheduler in dev
+  weekly-dev:
+    triggers:
+      - schedule:
+          # The timezone is UTC.
+          cron: "0 17 * * 1"
+          filters:
+            branches:
+              only:
+                - staging
+    jobs:
+      # Corresponding to `dbt run`
+      - execute-dbt:
+          name: dbt-models-scheduler
+          dbt_subcommand: run
+          service_account_env_var: GOOGLE_APPLICATION_CREDENTIALS_DBT_JOB_DEV
+          target: "dev"
+          vars_path: *vars_path_dev
+          selector: "weekly-dev"
+      # Corresponding to `dbt snapshot`
+      - execute-dbt:
+          name: dbt-snapshots-scheduler
+          dbt_subcommand: snapshot
+          service_account_env_var: GOOGLE_APPLICATION_CREDENTIALS_DBT_JOB_DEV
+          target: "dev"
+          vars_path: *vars_path_dev
+          selector: "weekly-dev"
+          requires:
+            - dbt-models-scheduler
+      # Corresponding to `dbt test`
+      - execute-dbt:
+          name: dbt-tests-scheduler
+          dbt_subcommand: test
+          service_account_env_var: GOOGLE_APPLICATION_CREDENTIALS_DBT_JOB_DEV
+          target: "dev"
+          vars_path: *vars_path_dev
+          selector: "weekly-tests-dev"
+          requires:
+            - dbt-models-scheduler
+  # Weekly scheduler in prod
+  weekly-prod:
+    triggers:
+      - schedule:
+          # The timezone is UTC.
+          cron: "0 18 * * 1"
+          filters:
+            branches:
+              only:
+                - main
+    jobs:
+      # Corresponding to `dbt run`
+      - execute-dbt:
+          name: dbt-models-scheduler
+          dbt_subcommand: run
+          service_account_env_var: GOOGLE_APPLICATION_CREDENTIALS_DBT_JOB_PROD
+          target: "prod-batch"
+          vars_path: *vars_path_prod
+          selector: "weekly-prod"
+      # Corresponding to `dbt snapshot`
+      - execute-dbt:
+          name: dbt-snapshots-scheduler
+          dbt_subcommand: snapshot
+          service_account_env_var: GOOGLE_APPLICATION_CREDENTIALS_DBT_JOB_PROD
+          target: "prod-batch"
+          vars_path: *vars_path_prod
+          selector: "weekly-prod"
+          requires:
+            - dbt-models-scheduler
+      # Corresponding to `dbt test`
+      - execute-dbt:
+          name: dbt-tests-scheduler
+          dbt_subcommand: test
+          service_account_env_var: GOOGLE_APPLICATION_CREDENTIALS_DBT_JOB_PROD
+          target: "prod-batch"
+          vars_path: *vars_path_prod
+          selector: "weekly-tests-prod"
+          requires:
+            - dbt-models-scheduler
+  # Weekly scheduler in prod, tagging 'weekly-prod/.*'
+  weekly-prod-by-tag:
+    jobs:
+      # Corresponding to `dbt run`
+      - execute-dbt:
+          name: dbt-models-scheduler
+          dbt_subcommand: run
+          service_account_env_var: GOOGLE_APPLICATION_CREDENTIALS_DBT_JOB_PROD
+          target: "prod-batch"
+          vars_path: *vars_path_prod
+          selector: "weekly-prod"
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /weekly-prod\/.*/
+      # Corresponding to `dbt snapshot`
+      - execute-dbt:
+          name: dbt-snapshots-scheduler
+          dbt_subcommand: snapshot
+          service_account_env_var: GOOGLE_APPLICATION_CREDENTIALS_DBT_JOB_PROD
+          target: "prod-batch"
+          vars_path: *vars_path_prod
+          selector: "weekly-prod"
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /weekly-prod\/.*/
+          requires:
+            - dbt-models-scheduler
+      # Corresponding to `dbt test`
+      - execute-dbt:
+          name: dbt-tests-scheduler
+          dbt_subcommand: test
+          service_account_env_var: GOOGLE_APPLICATION_CREDENTIALS_DBT_JOB_PROD
+          target: "prod-batch"
+          vars_path: *vars_path_prod
+          selector: "weekly-tests-prod"
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /weekly-prod\/.*/
+          requires:
+            - dbt-models-scheduler
+  # Monthly scheduler in dev
+  monthly-dev:
+    triggers:
+      - schedule:
+          # The timezone is UTC.
+          cron: "30 0 2 * *"
+          filters:
+            branches:
+              only:
+                - staging
+    jobs:
+      # Corresponding to `dbt run`
+      - execute-dbt:
+          name: dbt-models-scheduler
+          dbt_subcommand: run
+          service_account_env_var: GOOGLE_APPLICATION_CREDENTIALS_DBT_JOB_DEV
+          target: "dev"
+          vars_path: *vars_path_dev
+          selector: "monthly-dev"
+      # Corresponding to `dbt snapshot`
+      - execute-dbt:
+          name: dbt-snapshots-scheduler
+          dbt_subcommand: snapshot
+          service_account_env_var: GOOGLE_APPLICATION_CREDENTIALS_DBT_JOB_DEV
+          target: "dev"
+          vars_path: *vars_path_dev
+          selector: "monthly-dev"
+          requires:
+            - dbt-models-scheduler
+      # Corresponding to `dbt test`
+      - execute-dbt:
+          name: dbt-tests-scheduler
+          dbt_subcommand: test
+          service_account_env_var: GOOGLE_APPLICATION_CREDENTIALS_DBT_JOB_DEV
+          target: "dev"
+          vars_path: *vars_path_dev
+          selector: "monthly-tests-dev"
+          requires:
+            - dbt-models-scheduler
+  # Monthly scheduler in prod
+  monthly-prod:
+    triggers:
+      - schedule:
+          # The timezone is UTC.
+          cron: "30 1 2 * *"
+          filters:
+            branches:
+              only:
+                - main
+    jobs:
+      # Corresponding to `dbt run`
+      - execute-dbt:
+          name: dbt-models-scheduler
+          dbt_subcommand: run
+          service_account_env_var: GOOGLE_APPLICATION_CREDENTIALS_DBT_JOB_PROD
+          target: "prod-batch"
+          vars_path: *vars_path_prod
+          selector: "monthly-prod"
+      # Corresponding to `dbt snapshot`
+      - execute-dbt:
+          name: dbt-snapshots-scheduler
+          dbt_subcommand: snapshot
+          service_account_env_var: GOOGLE_APPLICATION_CREDENTIALS_DBT_JOB_PROD
+          target: "prod-batch"
+          vars_path: *vars_path_prod
+          selector: "monthly-prod"
+          requires:
+            - dbt-models-scheduler
+      # Corresponding to `dbt test`
+      - execute-dbt:
+          name: dbt-tests-scheduler
+          dbt_subcommand: test
+          service_account_env_var: GOOGLE_APPLICATION_CREDENTIALS_DBT_JOB_PROD
+          target: "prod-batch"
+          vars_path: *vars_path_prod
+          selector: "monthly-tests-prod"
+          requires:
+            - dbt-models-scheduler
+  # Monthly scheduler in prod, tagging 'monthly-prod/.*'
+  monthly-prod-by-tag:
+    jobs:
+      # Corresponding to `dbt run`
+      - execute-dbt:
+          name: dbt-models-scheduler
+          dbt_subcommand: run
+          service_account_env_var: GOOGLE_APPLICATION_CREDENTIALS_DBT_JOB_PROD
+          target: "prod-batch"
+          vars_path: *vars_path_prod
+          selector: "monthly-prod"
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /monthly-prod\/.*/
+      # Corresponding to `dbt snapshot`
+      - execute-dbt:
+          name: dbt-snapshots-scheduler
+          dbt_subcommand: snapshot
+          service_account_env_var: GOOGLE_APPLICATION_CREDENTIALS_DBT_JOB_PROD
+          target: "prod-batch"
+          vars_path: *vars_path_prod
+          selector: "monthly-prod"
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /monthly-prod\/.*/
+          requires:
+            - dbt-models-scheduler
+      # Corresponding to `dbt test`
+      - execute-dbt:
+          name: dbt-tests-scheduler
+          dbt_subcommand: test
+          service_account_env_var: GOOGLE_APPLICATION_CREDENTIALS_DBT_JOB_PROD
+          target: "prod-batch"
+          vars_path: *vars_path_prod
+          selector: "monthly-tests-prod"
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /monthly-prod\/.*/
+          requires:
+            - dbt-models-scheduler

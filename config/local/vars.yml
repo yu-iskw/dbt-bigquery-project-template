@@ -1,0 +1,6 @@
+# GCP projects
+projects:
+  # Please comment out dev_project_id when you are not in the development mode.
+  dev_project_id: "personal-dev-project"
+  project-a: "project-a-dev"
+  project-b: "project-b-dev"

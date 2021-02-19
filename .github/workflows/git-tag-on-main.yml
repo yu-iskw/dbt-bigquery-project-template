@@ -1,0 +1,27 @@
+# The workflow create a git tag on the latest main branch
+# at the time of triggering it.
+
+name: Create a git tag on the latest main branch
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        required: true
+        description: "Git Tag"
+
+jobs:
+  git-tag-on-main:
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          ref: main
+      - name: Bump version and push tag
+        id: github_tag_action
+        uses: mathieudutour/github-tag-action@v5
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          default_bump: false
+          custom_tag: ${{ github.event.inputs.tag }}
+          tag_prefix: ""

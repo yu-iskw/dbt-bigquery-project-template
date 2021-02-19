@@ -1,0 +1,86 @@
+---
+version: 2
+
+# sources
+sources:
+  # project ID: test-project
+  # dataset ID: test_name
+  - name: test_name
+    description: test_description
+    database: "test-project"
+    schema: test_schema
+    loader: test_loader
+    loaded_at_field: created_at
+    meta:
+      x: a
+      y: b
+      z: c
+    tags:
+      - tag1
+      - tag2
+      - tag3
+
+    overrides: true
+
+    freshness:
+      warn_after:
+        count: 1
+        period: minute
+      error_after:
+        count: 1
+        period: day
+      filter: "created_at IS NOT NULL"
+
+    quoting:
+      database: true
+      schema: true
+      identifier: true
+
+    tables:
+      # table ID: test_table
+      - name: test_table
+        description: test_description
+        meta:
+          a: x
+          b: y
+          c: z
+        identifier: test_table_alias
+        loaded_at_field: updated_at
+        tests:
+          - custome_test
+        tags:
+          - tag1
+          - tag2
+          - tag3
+        freshness:
+          warn_after:
+            count: 2
+            period: hour
+          error_after:
+            count: 2
+            period: day
+          filter: "updates IS NOT NULL"
+
+        quoting:
+          database: false
+          schema: false
+          identifier: false
+        columns:
+          # Column: id
+          - name: id
+            # description
+            description: ID
+            # labels
+            meta:
+              contains_pii: "true"
+            quote: false
+            tests:
+              - unique
+              - not_null
+            tags:
+              - tag1
+              - tag2
+
+          # Column: updated
+          - name: updated
+            description: "updated timestamp"

@@ -1,0 +1,18 @@
+# dbt
+target/
+dbt_modules/
+logs/
+
+# python
+*.egg-info/
+__pycache__/
+*.pyc
+.tox/
+python/dbt-helper/html/
+
+# GCP
+*_credentials.json
+
+# others
+.DS_Store
+.idea/
