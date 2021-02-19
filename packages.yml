@@ -2,3 +2,5 @@ packages:
   # SEE https://github.com/fishtown-analytics/dbt-utils
   - package: fishtown-analytics/dbt_utils
     version: 0.6.4
+  - package: yu-iskw/dbt_airflow_macros
+    version: 0.2.2
