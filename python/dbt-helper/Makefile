@@ -1,7 +1,7 @@
 # Set up an environment to develop dbt-helper.
 .PHONEY: setup
 setup:
-	pip3 install --no-cache-dir --force-reinstall -r requirements/requirements-dev.txt
+	bash ./dev/setup.sh
 
 # Check all the conding style.
 .PHONY: lint
@@ -20,7 +20,7 @@ lint-python:
 # Run the unit tests.
 .PHONEY: test
 test:
-	pytest -v -s --cache-clear tests/
+	bash ./dev/run_python_tests.sh
 
 # Check if there is any unsafe dependency with safety.
 .PHONEY: safety
