@@ -117,7 +117,6 @@ def drop_disabled_models(
     manifest_json = load_json(manifest)
     if schema_version == "v1":
         manifest = ManifestV1.parse(json_block=manifest_json)
-        deleted_dataset_ids = []
         # Drop tables
         client = create_bigquery_client(project=client_project)
         for disabled in manifest.disabled:
@@ -138,10 +137,10 @@ def drop_disabled_models(
                                     dataset_id=dataset_id,
                                     table_id=table_id)
                 # Drop a dataset if it is empty.
-                click.echo("Drop dataset:{}.{} if exists and empty".format(project, dataset_id, table_id))
+                click.echo("Drop dataset:{}.{} if exists and empty".format(project, dataset_id))
                 drop_bigquery_dataset(client=client,
                                       project=project,
                                       dataset_id=dataset_id)
     else:
-        click.echo("The manifest version {} is not supported".format(manifest_version))
+        click.echo("The manifest version {} is not supported".format(schema_version))
         sys.exit(1)

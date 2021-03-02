@@ -1,16 +1,8 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, division, print_function
 
-import re
 from dataclasses import dataclass
-from typing import List, Dict, Any, Union, Optional
-
-import dictdiffer
-
-from google.cloud import bigquery
-
-from dbt_helper.parser.bigquery import SchemaInfo, extract_schema_info
-from dbt_helper.utils import DEFAULT_DBT_CONFIG_VERSION, extract_diff
+from typing import List, Dict, Optional
 
 
 @dataclass
@@ -20,7 +12,7 @@ class Config:
     materialized: str
 
     @classmethod
-    def parse(self, json_block: dict):
+    def parse(cls, json_block: dict):
         return Config(
             enabled=json_block.get("enabled"),
             materialized=json_block.get("materialized"),

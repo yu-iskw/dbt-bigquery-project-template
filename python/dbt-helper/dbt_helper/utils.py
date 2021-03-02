@@ -244,8 +244,8 @@ def get_ruamel_yaml() -> ruamel.yaml.YAML:
     Returns:
         ruamel.tools.YAML: a defined ruamel.tools.YAML object
     """
-    yaml = ruamel.yaml.YAML()
-    yaml.explicit_start = True
-    yaml.preserve_quotes = True
-    yaml.indent(mapping=2, sequence=4, offset=2)
-    return yaml
+    ruamel_yaml_obj = ruamel.yaml.YAML()
+    ruamel_yaml_obj.explicit_start = True
+    ruamel_yaml_obj.preserve_quotes = True
+    ruamel_yaml_obj.indent(mapping=2, sequence=4, offset=2)
+    return ruamel_yaml_obj

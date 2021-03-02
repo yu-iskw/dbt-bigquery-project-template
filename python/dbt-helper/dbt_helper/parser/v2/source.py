@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, division, print_function
 
-import re
 from dataclasses import dataclass
 from typing import List, Dict, Any, Union
 
@@ -202,4 +201,4 @@ class DbtSources:
 
     def has_tables(self):
         """Check if tables exist or not"""
-        return any([s.has_tables() for s in self.sources])
+        return any(s.has_tables() for s in self.sources)
