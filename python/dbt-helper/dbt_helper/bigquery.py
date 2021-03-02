@@ -64,7 +64,7 @@ def get_bigquery_dataset(
     dataset_ref = DatasetReference(project=project, dataset_id=dataset_id)
     try:
         return client.get_dataset(dataset_ref=dataset_ref)
-    except NotFound as e:
+    except NotFound:
         return None
 
 

@@ -2,7 +2,6 @@
 from __future__ import absolute_import, division, print_function
 
 import os
-import json
 import unittest
 
 from dbt_helper.parser.artifacts.manifest import manifest_v1
@@ -12,7 +11,7 @@ from dbt_helper.utils import (
 )
 
 
-class TestManifest_0_19(unittest.TestCase):
+class TestManifestV1(unittest.TestCase):
 
     def setUp(self):
         # Load the testing manifest.json.

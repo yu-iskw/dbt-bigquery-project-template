@@ -77,14 +77,14 @@ class TestDbtUtils(unittest.TestCase):
 
     def test_parse_invalid_values(self):
         # Test with an empty dict.
-        input = {}
+        yaml_block = {}
         with self.assertRaises(ValueError):
-            source.DbtSources.parse(input)
+            source.DbtSources.parse(yaml_block)
         # Test with a dbt model schema YAML
         path = os.path.join(get_module_root(), "tests", "fixtures", "v2", "test_model_schema.yml")
-        input = load_yaml(path)
+        yaml_block = load_yaml(path)
         with self.assertRaises(ValueError):
-            source.DbtSources.parse(input)
+            source.DbtSources.parse(yaml_block)
 
     def test_table_compare(self):
         dbt_source = source.DbtSource.parse(self.yaml_block)

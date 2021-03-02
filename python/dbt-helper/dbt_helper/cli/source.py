@@ -203,7 +203,7 @@ def update_dbt_source(
         if not dbt_sources.has_tables():
             click.echo("{} doesn't have tables".format(source_path))
             return
-    except ValueError as e:
+    except ValueError:
         click.echo("{} is not a dbt source schema".format(source_path))
         return
 

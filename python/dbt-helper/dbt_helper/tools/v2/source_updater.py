@@ -6,11 +6,11 @@ from typing import Any, Dict
 
 import ruamel
 import ruamel.yaml
-from dbt_helper.utils import get_ruamel_yaml
 from ruamel.yaml.comments import CommentedSeq, CommentedMap
 
 from google.cloud import bigquery
 
+from dbt_helper.utils import get_ruamel_yaml
 from dbt_helper.parser.bigquery import extract_schema_info
 
 
