@@ -1,4 +1,22 @@
 # -*- coding: utf-8 -*-
+
+#
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
 from __future__ import absolute_import, division, print_function
 
 import click
@@ -17,36 +35,52 @@ def snapshot(context):
 
 # pylint: disable=W0613
 @snapshot.command()
-@click.option("--snapshots_dir", type=click.Path(exists=True), required=True,
-              help="Path to the dbt model dir")
-@click.option("--strategy", type=str, help="snapshot strategy", default="timestamp")
-@click.option("--project_alias", type=str, required=True, help="GCP project alias")
+@click.option(
+    "--snapshots_dir",
+    type=click.Path(exists=True),
+    required=True,
+    help="Path to the dbt model dir")
+@click.option(
+    "--strategy", type=str, help="snapshot strategy", default="timestamp")
+@click.option(
+    "--project_alias", type=str, required=True, help="GCP project alias")
 @click.option("--dataset", type=str, required=True, help="BigQuery dataset ID")
 @click.option("--table", type=str, required=True, help="BigQuery table ID")
-@click.option("--labels", type=str, multiple=True, help="labels (--label ex: 'contains_pii=true')", default=[])
+@click.option(
+    "--labels",
+    type=str,
+    multiple=True,
+    help="labels (--label ex: 'contains_pii=true')",
+    default=[])
 @click.option("--tags", type=str, multiple=True, help="tags", default=[])
-@click.option("--owner", type=str, help="owner name", default="", callback=validate_owner_callback)
-@click.option("--version", type=str, help="dbt config version", default=DEFAULT_DBT_CONFIG_VERSION)
-@click.option("--schema_filename", type=str, help="output schema file name", default="schema.yml")
-@click.option("--sql_filename", type=str, default=None,
-              help="output sql file name. If it is None, then generate the name")
+@click.option(
+    "--owner",
+    type=str,
+    help="owner name",
+    default="",
+    callback=validate_owner_callback)
+@click.option(
+    "--version",
+    type=str,
+    help="dbt config version",
+    default=DEFAULT_DBT_CONFIG_VERSION)
+@click.option(
+    "--schema_filename",
+    type=str,
+    help="output schema file name",
+    default="schema.yml")
+@click.option(
+    "--sql_filename",
+    type=str,
+    default=None,
+    help="output sql file name. If it is None, then generate the name")
 @click.option("--overwrite", is_flag=True, help="flag to overwrite")
-@click.option("--experimental", is_flag=True, help="Create an experimental model")
+@click.option(
+    "--experimental", is_flag=True, help="Create an experimental model")
 @click.pass_context
 def scaffold(
-        context,
-        snapshots_dir,
-        strategy,
-        project_alias,
-        dataset,
-        table,
-        labels,
-        tags,
-        owner,
-        version,
-        schema_filename,
-        sql_filename,
-        overwrite,
+        context, snapshots_dir, strategy, project_alias, dataset, table, labels,
+        tags, owner, version, schema_filename, sql_filename, overwrite,
         experimental):
     """Generate scaffold files of a dbt model"""
     labels_dict = parse_labels(labels=labels)

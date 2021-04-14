@@ -1,4 +1,22 @@
 # -*- coding: utf-8 -*-
+
+#
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
 from __future__ import absolute_import, division, print_function, annotations
 
 from dataclasses import dataclass
@@ -6,11 +24,11 @@ from typing import Any, Dict
 
 import ruamel
 import ruamel.yaml
-from dbt_helper.utils import get_ruamel_yaml
 from ruamel.yaml.comments import CommentedSeq, CommentedMap
 
 from google.cloud import bigquery
 
+from dbt_helper.utils import get_ruamel_yaml
 from dbt_helper.parser.bigquery import extract_schema_info
 
 
@@ -71,7 +89,8 @@ class SourceTableUpdaterV2:
         with open(path, "w") as writer:
             self.yaml.dump(self.data, writer)
 
-    def update_with_bq_table(self, table: bigquery.Table) -> SourceTableUpdaterV2:
+    def update_with_bq_table(
+            self, table: bigquery.Table) -> SourceTableUpdaterV2:
         """Update table metadata with a BigQuery table.
 
         Args:
@@ -88,7 +107,8 @@ class SourceTableUpdaterV2:
         self.update_columns(table.schema)
         return self
 
-    def update_columns(self, schema: bigquery.SchemaField) -> SourceTableUpdaterV2:
+    def update_columns(
+            self, schema: bigquery.SchemaField) -> SourceTableUpdaterV2:
         """Update 'sources[].tables[].columns'
 
         Args:
@@ -120,7 +140,9 @@ class SourceTableUpdaterV2:
                 self.columns.insert(cursor_index + 1, new_column)
         # Remove columns which don't exist in new schema.
         for existing_column in self.columns:
-            if existing_column["name"] not in [c.name for c in new_schema_info_list]:
+            if existing_column["name"] not in [
+                    c.name for c in new_schema_info_list
+            ]:
                 self.columns.remove(existing_column)
         return self
 

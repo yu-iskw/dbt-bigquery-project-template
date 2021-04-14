@@ -1,7 +1,24 @@
 # -*- coding: utf-8 -*-
+
+#
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
 from __future__ import absolute_import, division, print_function
 
-import re
 from dataclasses import dataclass
 from typing import List, Dict, Any, Union
 
@@ -42,12 +59,16 @@ class DbtSourceTableColumn:
         return dbt_source_table_column
 
     def compare(self, schema_info: SchemaInfo):
+        """Compare with another SchemaInfo. """
         if self.name != schema_info.name:
-            raise ValueError("Given schema field is wrong: ({}, {})".format(self.name, schema_info.name))
+            raise ValueError(
+                "Given schema field is wrong: ({}, {})".format(
+                    self.name, schema_info.name))
         reasons = {}
         if self.description != schema_info.description:
             key = "description of column {} is different".format(self.name)
-            diff = extract_diff(self.description, schema_info.description, as_str=True)
+            diff = extract_diff(
+                self.description, schema_info.description, as_str=True)
             reasons[key] = diff
         return reasons
 
@@ -82,8 +103,10 @@ class DbtSourceTable:
             meta=yaml_block.get("meta", {}),
             tags=yaml_block.get("tags", []),
             tests=yaml_block.get("tests", []),
-            columns=[DbtSourceTableColumn.parse(sub_yaml_block)
-                     for sub_yaml_block in yaml_block.get("columns", [])],
+            columns=[
+                DbtSourceTableColumn.parse(sub_yaml_block)
+                for sub_yaml_block in yaml_block.get("columns", [])
+            ],
         )
         return dbt_source_table
 
@@ -112,7 +135,8 @@ class DbtSourceTable:
         for c in self.columns:
             target_schema_info = [s for s in bq_schema_info if c.name == s.name]
             if len(target_schema_info) == 0:
-                reasons["not found column {}".format(c.name)] = "not found column {}".format(c.name)
+                reasons["not found column {}".format(
+                    c.name)] = "not found column {}".format(c.name)
             else:
                 sub_reasons = c.compare(target_schema_info[0])
                 reasons.update(sub_reasons)
@@ -153,8 +177,10 @@ class DbtSource:
             schema=yaml_block.get("schema", None),
             meta=yaml_block.get("meta", {}),
             tags=yaml_block.get("tags", []),
-            tables=[DbtSourceTable.parse(sub_yaml_block)
-                    for sub_yaml_block in yaml_block.get("tables", [])],
+            tables=[
+                DbtSourceTable.parse(sub_yaml_block)
+                for sub_yaml_block in yaml_block.get("tables", [])
+            ],
         )
         return dbt_source
 
@@ -195,11 +221,12 @@ class DbtSources:
             raise ValueError("it doesn't have the 'sources' property.")
 
         dbt_sources = DbtSources(
-            config_version=yaml_block.get("version", DEFAULT_DBT_CONFIG_VERSION),
+            config_version=yaml_block.get(
+                "version", DEFAULT_DBT_CONFIG_VERSION),
             sources=[DbtSource.parse(x) for x in yaml_block.get("sources", [])],
         )
         return dbt_sources
 
     def has_tables(self):
         """Check if tables exist or not"""
-        return any([s.has_tables() for s in self.sources])
+        return any(s.has_tables() for s in self.sources)

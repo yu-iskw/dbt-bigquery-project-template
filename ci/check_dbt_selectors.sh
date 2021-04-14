@@ -34,14 +34,13 @@ for selector_name in $selector_names; do
 
   # Skip a selector if matched
   is_skipped=0
-  for skipped_selector in ${SKIPPED_SELECTORS[*]}
-  do
-    if [[ "$selector_name" == "$skipped_selector" ]] ; then
+  for skipped_selector in ${SKIPPED_SELECTORS[*]}; do
+    if [[ "$selector_name" == "$skipped_selector" ]]; then
       echo "${selector_name} is skipped due to the while list."
       is_skipped=1
     fi
   done
-  if [[ $is_skipped == 1 ]] ; then
+  if [[ $is_skipped == 1 ]]; then
     continue
   fi
 
@@ -53,7 +52,8 @@ for selector_name in $selector_names; do
       --profiles-dir "${PROJECT_DIR}/profiles" \
       --profile "dbt-metadata" \
       --target "prod" \
-      --vars "$(cat "${PROJECT_DIR}/config/prod/vars.yml")" | wc -l)
+      --vars "$(cat "${PROJECT_DIR}/config/prod/vars.yml")" | wc -l
+  )
   echo "Selector:${selector_name} selects ${result} dbt resources."
 
   if [[ $result -eq 0 ]]; then

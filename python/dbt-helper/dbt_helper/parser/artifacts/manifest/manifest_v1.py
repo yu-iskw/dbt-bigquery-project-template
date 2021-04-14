@@ -1,16 +1,26 @@
 # -*- coding: utf-8 -*-
+
+#
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
 from __future__ import absolute_import, division, print_function
 
-import re
 from dataclasses import dataclass
-from typing import List, Dict, Any, Union, Optional
-
-import dictdiffer
-
-from google.cloud import bigquery
-
-from dbt_helper.parser.bigquery import SchemaInfo, extract_schema_info
-from dbt_helper.utils import DEFAULT_DBT_CONFIG_VERSION, extract_diff
+from typing import List, Dict, Optional
 
 
 @dataclass
@@ -20,7 +30,7 @@ class Config:
     materialized: str
 
     @classmethod
-    def parse(self, json_block: dict):
+    def parse(cls, json_block: dict):
         return Config(
             enabled=json_block.get("enabled"),
             materialized=json_block.get("materialized"),
@@ -59,7 +69,9 @@ class Disabled:
             alias=json_block.get("alias"),
             name=json_block.get("name"),
             fqn=json_block.get("fqn", []),
-            config=(Config.parse(json_block["config"]) if "config" in json_block else None),
+            config=(
+                Config.parse(json_block["config"])
+                if "config" in json_block else None),
         )
 
 
@@ -87,5 +99,7 @@ class ManifestV1:
             generated_at=json_block.get("generated_at"),
             adapter_type=json_block.get("adapter_type"),
             env=json_block.get("env", {}),
-            disabled=[Disabled.parse(sub) for sub in json_block.get("disabled", [])],
+            disabled=[
+                Disabled.parse(sub) for sub in json_block.get("disabled", [])
+            ],
         )

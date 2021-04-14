@@ -1,4 +1,22 @@
 # -*- coding: utf-8 -*-
+
+#
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
 from __future__ import absolute_import, division, print_function
 
 import os
@@ -38,9 +56,7 @@ def generate_analysis(
     # Render contents
     rendered_sql = _render_analysis_sql()
     rendered_schema = _render_analysis_yaml(
-        saved_path=path_to_analysis,
-        owner=owner,
-        version=version)
+        saved_path=path_to_analysis, owner=owner, version=version)
 
     # Create a directory for scaffold files
     full_path = os.path.join(analysis_dir, path_to_analysis)
@@ -59,11 +75,11 @@ def generate_analysis(
 
 
 def _render_analysis_yaml(
-        saved_path: str,
-        owner,
-        version=DEFAULT_DBT_CONFIG_VERSION,
-        templates_base_dir=get_templates_path()) -> str:
-
+    saved_path: str,
+    owner,
+    version=DEFAULT_DBT_CONFIG_VERSION,
+    templates_base_dir=get_templates_path()
+) -> str:
     """Render a schema YAML file of analysis.
 
     Args:
@@ -78,7 +94,8 @@ def _render_analysis_yaml(
 
     analysis_name = get_analysis_name(saved_path)
     env = Environment(loader=FileSystemLoader(templates_base_dir))
-    template = env.get_template(os.path.join('v2', 'analysis', 'analysis.yml.tmpl'))
+    template = env.get_template(
+        os.path.join('v2', 'analysis', 'analysis.yml.tmpl'))
     return template.render(
         analysis_name=analysis_name,
         owner=owner,
@@ -88,8 +105,9 @@ def _render_analysis_yaml(
 
 
 def _render_analysis_sql(
-        version=DEFAULT_DBT_CONFIG_VERSION,
-        templates_base_dir=get_templates_path()) -> str:
+    version=DEFAULT_DBT_CONFIG_VERSION,
+    templates_base_dir=get_templates_path()
+) -> str:
     """Render an analysis SQL file
 
     Args:
@@ -100,7 +118,8 @@ def _render_analysis_sql(
         (str): a rendered SQL file
     """
     env = Environment(loader=FileSystemLoader(templates_base_dir))
-    template = env.get_template(os.path.join('v2', 'analysis', 'analysis.sql.tmpl'))
+    template = env.get_template(
+        os.path.join('v2', 'analysis', 'analysis.sql.tmpl'))
     return template.render(
         version=version,
         dbt_helper_version=dbt_helper.VERSION,

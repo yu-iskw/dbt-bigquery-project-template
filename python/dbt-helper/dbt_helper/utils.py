@@ -1,4 +1,22 @@
 # -*- coding: utf-8 -*-
+
+#
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
 from __future__ import absolute_import, division, print_function
 
 import difflib
@@ -84,7 +102,8 @@ def get_dataset_dir(models_dir: str, project: str, dataset: str) -> str:
     return os.path.join(models_dir, normalized_project, dataset)
 
 
-def get_table_dir(models_dir: str, project: str, dataset: str, table: str) -> str:
+def get_table_dir(
+        models_dir: str, project: str, dataset: str, table: str) -> str:
     """Get a path to a directory to store dbt files
 
     Args:
@@ -137,10 +156,9 @@ def find_yaml_files(path: str):
             yield file_or_dir
 
 
-def extract_diff(
-        x: Optional[str],
-        y: Optional[str],
-        as_str=False) -> Union[List[str], str]:
+def extract_diff(x: Optional[str],
+                 y: Optional[str],
+                 as_str=False) -> Union[List[str], str]:
     """Extract only differences between two strings.
 
     Args:
@@ -157,7 +175,9 @@ def extract_diff(
     differ = difflib.Differ()
     diff = differ.compare(x.splitlines(True), y.splitlines(True))
     pattern = re.compile(r'^[\-?+]')
-    only_diff = [line for line in diff if line is not None and pattern.search(line)]
+    only_diff = [
+        line for line in diff if line is not None and pattern.search(line)
+    ]
     if as_str is True:
         return "\n".join(only_diff) if len(only_diff) > 0 else ""
     else:
@@ -196,7 +216,6 @@ def load_json(path: str) -> str:
         if not isinstance(json_block, dict):
             raise ValueError("invalid JSON file")
     return json_block
-
 
 
 def strip_date_suffix(table_id: str) -> str:
@@ -244,8 +263,8 @@ def get_ruamel_yaml() -> ruamel.yaml.YAML:
     Returns:
         ruamel.tools.YAML: a defined ruamel.tools.YAML object
     """
-    yaml = ruamel.yaml.YAML()
-    yaml.explicit_start = True
-    yaml.preserve_quotes = True
-    yaml.indent(mapping=2, sequence=4, offset=2)
-    return yaml
+    ruamel_yaml_obj = ruamel.yaml.YAML()
+    ruamel_yaml_obj.explicit_start = True
+    ruamel_yaml_obj.preserve_quotes = True
+    ruamel_yaml_obj.indent(mapping=2, sequence=4, offset=2)
+    return ruamel_yaml_obj

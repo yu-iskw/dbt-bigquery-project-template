@@ -1,4 +1,23 @@
 # -*- coding: utf-8 -*-
+
+#
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+
 from __future__ import absolute_import, division, print_function
 
 import os
@@ -77,14 +96,14 @@ class TestDbtUtils(unittest.TestCase):
 
     def test_parse_invalid_values(self):
         # Test with an empty dict.
-        input = {}
+        yaml_block = {}
         with self.assertRaises(ValueError):
-            source.DbtSources.parse(input)
+            source.DbtSources.parse(yaml_block)
         # Test with a dbt model schema YAML
         path = os.path.join(get_module_root(), "tests", "fixtures", "v2", "test_model_schema.yml")
-        input = load_yaml(path)
+        yaml_block = load_yaml(path)
         with self.assertRaises(ValueError):
-            source.DbtSources.parse(input)
+            source.DbtSources.parse(yaml_block)
 
     def test_table_compare(self):
         dbt_source = source.DbtSource.parse(self.yaml_block)
