@@ -17,7 +17,6 @@
 # limitations under the License.
 #
 
-
 from __future__ import absolute_import, division, print_function
 
 import difflib
@@ -103,7 +102,8 @@ def get_dataset_dir(models_dir: str, project: str, dataset: str) -> str:
     return os.path.join(models_dir, normalized_project, dataset)
 
 
-def get_table_dir(models_dir: str, project: str, dataset: str, table: str) -> str:
+def get_table_dir(
+        models_dir: str, project: str, dataset: str, table: str) -> str:
     """Get a path to a directory to store dbt files
 
     Args:
@@ -156,10 +156,9 @@ def find_yaml_files(path: str):
             yield file_or_dir
 
 
-def extract_diff(
-        x: Optional[str],
-        y: Optional[str],
-        as_str=False) -> Union[List[str], str]:
+def extract_diff(x: Optional[str],
+                 y: Optional[str],
+                 as_str=False) -> Union[List[str], str]:
     """Extract only differences between two strings.
 
     Args:
@@ -176,7 +175,9 @@ def extract_diff(
     differ = difflib.Differ()
     diff = differ.compare(x.splitlines(True), y.splitlines(True))
     pattern = re.compile(r'^[\-?+]')
-    only_diff = [line for line in diff if line is not None and pattern.search(line)]
+    only_diff = [
+        line for line in diff if line is not None and pattern.search(line)
+    ]
     if as_str is True:
         return "\n".join(only_diff) if len(only_diff) > 0 else ""
     else:
@@ -215,7 +216,6 @@ def load_json(path: str) -> str:
         if not isinstance(json_block, dict):
             raise ValueError("invalid JSON file")
     return json_block
-
 
 
 def strip_date_suffix(table_id: str) -> str:

@@ -17,7 +17,6 @@
 # limitations under the License.
 #
 
-
 from __future__ import absolute_import, division, print_function
 
 import os
@@ -62,15 +61,26 @@ def generate_snapshot(
     reference_id = generate_reference_id(
         project=project_alias, dataset=dataset, table=table)
     rendered_sql = _render_snapshot_sql(
-        strategy=strategy, project_alias=project_alias, dataset=dataset, table=table,
-        tags=tags, labels=labels, owner=owner)
+        strategy=strategy,
+        project_alias=project_alias,
+        dataset=dataset,
+        table=table,
+        tags=tags,
+        labels=labels,
+        owner=owner)
     rendered_schema = _render_schema_yaml(
-        project_alias=project_alias, dataset=dataset, table=table,
-        version=version, owner=owner)
+        project_alias=project_alias,
+        dataset=dataset,
+        table=table,
+        version=version,
+        owner=owner)
 
     # Create a directory to store
     path = get_table_dir(
-        models_dir=snapshots_dir, project=project_alias, dataset=dataset, table=table)
+        models_dir=snapshots_dir,
+        project=project_alias,
+        dataset=dataset,
+        table=table)
     if os.path.isdir(path) and overwrite is False:
         raise ValueError("{} already exists".format(path))
     os.makedirs(path, exist_ok=True)
@@ -86,12 +96,12 @@ def generate_snapshot(
 
 
 def _render_schema_yaml(
-        project_alias: str,
-        dataset: str,
-        table: str,
-        owner="",
-        version=2,
-        templates_base_dir=get_templates_path()) -> str:
+    project_alias: str,
+    dataset: str,
+    table: str,
+    owner="",
+    version=2,
+    templates_base_dir=get_templates_path()) -> str:
     """Render a model SQL file
 
     Args:
@@ -106,7 +116,8 @@ def _render_schema_yaml(
     """
     path = os.path.join(templates_base_dir)
     env = Environment(loader=FileSystemLoader(path))
-    template = env.get_template(os.path.join('v2', 'snapshot', 'schema.yml.tmpl'))
+    template = env.get_template(
+        os.path.join('v2', 'snapshot', 'schema.yml.tmpl'))
     reference_id = generate_reference_id(
         project=project_alias, dataset=dataset, table=table)
     return template.render(
@@ -121,14 +132,14 @@ def _render_schema_yaml(
 
 
 def _render_snapshot_sql(
-        strategy: str,
-        project_alias: str,
-        dataset: str,
-        table: str,
-        labels: Optional[Dict[str, str]] = None,
-        tags: Optional[List[str]] = None,
-        owner="",
-        templates_base_dir=get_templates_path()) -> str:
+    strategy: str,
+    project_alias: str,
+    dataset: str,
+    table: str,
+    labels: Optional[Dict[str, str]] = None,
+    tags: Optional[List[str]] = None,
+    owner="",
+    templates_base_dir=get_templates_path()) -> str:
     """Render a model SQL file
 
     Args:
@@ -151,7 +162,8 @@ def _render_snapshot_sql(
 
     path = os.path.join(templates_base_dir)
     env = Environment(loader=FileSystemLoader(path))
-    template = env.get_template(os.path.join('v2', 'snapshot', 'snapshot.sql.tmpl'))
+    template = env.get_template(
+        os.path.join('v2', 'snapshot', 'snapshot.sql.tmpl'))
     reference_id = generate_reference_id(
         project=project_alias, dataset=dataset, table=table)
     return template.render(
@@ -165,4 +177,3 @@ def _render_snapshot_sql(
         owner=owner,
         dbt_helper_version=dbt_helper.VERSION,
     )
-

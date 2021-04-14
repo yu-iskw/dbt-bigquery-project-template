@@ -17,7 +17,6 @@
 # limitations under the License.
 #
 
-
 from __future__ import absolute_import, division, print_function
 
 import copy
@@ -46,8 +45,7 @@ def create_bigquery_client(project: Optional[str] = None):
 
 
 def replace_bq_dataset_metadata(
-        dataset: bigquery.Dataset,
-        dbt_source: DbtSource):
+        dataset: bigquery.Dataset, dbt_source: DbtSource):
     """Update
 
     Args:
@@ -66,8 +64,7 @@ def replace_bq_dataset_metadata(
 
 
 def get_bigquery_dataset(
-        client: bigquery.Client,
-        project: str,
+        client: bigquery.Client, project: str,
         dataset_id: str) -> bigquery.Table:
     """Get BigQuery dataset
 
@@ -88,8 +85,7 @@ def get_bigquery_dataset(
 
 
 def drop_bigquery_dataset(
-        client: bigquery.Client,
-        project: str,
+        client: bigquery.Client, project: str,
         dataset_id: str) -> bigquery.Table:
     """Drop BigQuery dataset if it doesn't have any table
 
@@ -99,17 +95,17 @@ def drop_bigquery_dataset(
         dataset_id (str): BigQuery dataset ID
     """
     # Get tables in the dataset.
-    tables = get_bigquery_tables(client=client, project=project, dataset_id=dataset_id)
+    tables = get_bigquery_tables(
+        client=client, project=project, dataset_id=dataset_id)
     # Drop the dataset if it doesn't contain any table.
     if len(tables) == 0:
         dataset_ref = DatasetReference(project=project, dataset_id=dataset_id)
-        client.delete_dataset(dataset=dataset_ref, delete_contents=False, not_found_ok=True)
+        client.delete_dataset(
+            dataset=dataset_ref, delete_contents=False, not_found_ok=True)
 
 
-def get_bigquery_tables(
-        client: bigquery.Client,
-        project: str,
-        dataset_id: str) -> List[str]:
+def get_bigquery_tables(client: bigquery.Client, project: str,
+                        dataset_id: str) -> List[str]:
     """Get BigQuery tables
 
     Args:
@@ -121,7 +117,8 @@ def get_bigquery_tables(
         list: A list of table IDs
     """
     dataset_ref = DatasetReference(project=project, dataset_id=dataset_id)
-    dataset = get_bigquery_dataset(client=client, project=project, dataset_id=dataset_id)
+    dataset = get_bigquery_dataset(
+        client=client, project=project, dataset_id=dataset_id)
     if dataset is None:
         return []
     else:
@@ -130,9 +127,7 @@ def get_bigquery_tables(
 
 
 def get_bigquery_table(
-        client: bigquery.Client,
-        project: str,
-        dataset_id: str,
+        client: bigquery.Client, project: str, dataset_id: str,
         table_id: str) -> bigquery.Table:
     """Get BigQuery table
 
@@ -147,15 +142,14 @@ def get_bigquery_table(
             A ``Table`` instance.
     """
     dataset_ref = DatasetReference(project=project, dataset_id=dataset_id)
-    table_ref = bigquery.TableReference(dataset_ref=dataset_ref, table_id=table_id)
+    table_ref = bigquery.TableReference(
+        dataset_ref=dataset_ref, table_id=table_id)
     table: bigquery.Table = client.get_table(table=table_ref)
     return table
 
 
 def drop_bigquery_table(
-        client: bigquery.Client,
-        project: str,
-        dataset_id: str,
+        client: bigquery.Client, project: str, dataset_id: str,
         table_id: str) -> bigquery.Table:
     """Delete BigQuery table
 
@@ -166,7 +160,8 @@ def drop_bigquery_table(
         table_id (str): BigQuery table ID
     """
     dataset_ref = DatasetReference(project=project, dataset_id=dataset_id)
-    table_ref = bigquery.TableReference(dataset_ref=dataset_ref, table_id=table_id)
+    table_ref = bigquery.TableReference(
+        dataset_ref=dataset_ref, table_id=table_id)
     client.delete_table(table=table_ref, not_found_ok=True)
 
 
@@ -219,15 +214,13 @@ def replace_bq_table_metadata(
     # Deeply copy table object
     replaced_table = copy.deepcopy(table)
     # Update table meta
-    if (dbt_source_table.description is not None
-            and len(dbt_source_table.description) >= 0):
+    if (dbt_source_table.description is not None and
+            len(dbt_source_table.description) >= 0):
         replaced_table.description = dbt_source_table.description
     # Update labels
-    if (dbt_source_table.meta is not None
-            and len(dbt_source_table.meta) >= 0):
+    if (dbt_source_table.meta is not None and len(dbt_source_table.meta) >= 0):
         merged_labels = merge_bigquery_labels(
-            base_labels=replaced_table.labels,
-            new_labels=dbt_source_table.meta)
+            base_labels=replaced_table.labels, new_labels=dbt_source_table.meta)
         replaced_table.labels = merged_labels
     # Update schema metadata
     replaced_table.schema = update_schema_metadata_with_dbt_source_table(
@@ -314,10 +307,9 @@ def update_scalar_schema_field_with_dbt_source_table(
     full_field_name = ".".join(full_field_names)
     # Update description
     for c in dbt_source_table.columns:
-        if (c.name == full_field_name
-                and c.description is not None
-                and len(c.description) > 1
-                and schema_field.description != c.description):
+        if (c.name == full_field_name and c.description is not None and
+                len(c.description) > 1 and
+                schema_field.description != c.description):
             # pylint: disable=W0212
             schema_field._description = c.description
             break
@@ -325,8 +317,8 @@ def update_scalar_schema_field_with_dbt_source_table(
 
 
 def merge_bigquery_labels(
-        base_labels: Dict[str, str],
-        new_labels: Dict[str, str]) -> Dict[str, str]:
+        base_labels: Dict[str, str], new_labels: Dict[str,
+                                                      str]) -> Dict[str, str]:
     """Merge old BigQuery labels and new one.
 
     We have to set removed labels to None due to the specification.

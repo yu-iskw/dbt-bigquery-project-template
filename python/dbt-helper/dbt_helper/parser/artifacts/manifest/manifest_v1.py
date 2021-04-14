@@ -17,7 +17,6 @@
 # limitations under the License.
 #
 
-
 from __future__ import absolute_import, division, print_function
 
 from dataclasses import dataclass
@@ -70,7 +69,9 @@ class Disabled:
             alias=json_block.get("alias"),
             name=json_block.get("name"),
             fqn=json_block.get("fqn", []),
-            config=(Config.parse(json_block["config"]) if "config" in json_block else None),
+            config=(
+                Config.parse(json_block["config"])
+                if "config" in json_block else None),
         )
 
 
@@ -98,5 +99,7 @@ class ManifestV1:
             generated_at=json_block.get("generated_at"),
             adapter_type=json_block.get("adapter_type"),
             env=json_block.get("env", {}),
-            disabled=[Disabled.parse(sub) for sub in json_block.get("disabled", [])],
+            disabled=[
+                Disabled.parse(sub) for sub in json_block.get("disabled", [])
+            ],
         )
