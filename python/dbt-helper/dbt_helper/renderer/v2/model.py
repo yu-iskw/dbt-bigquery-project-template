@@ -17,7 +17,6 @@
 # limitations under the License.
 #
 
-
 from __future__ import absolute_import, division, print_function
 
 import os
@@ -63,18 +62,28 @@ def generate_model(
     reference_id = generate_reference_id(
         project=project_alias, dataset=dataset, table=table)
     rendered_sql = _render_model_sql(
-        project_alias=project_alias, dataset=dataset, table=table,
-        materialization=materialization, tags=tags,
-        labels=labels, owner=owner)
+        project_alias=project_alias,
+        dataset=dataset,
+        table=table,
+        materialization=materialization,
+        tags=tags,
+        labels=labels,
+        owner=owner)
     rendered_schema = _render_schema_yaml(
-        project_alias=project_alias, dataset=dataset, table=table,
-        version=version, owner=owner)
+        project_alias=project_alias,
+        dataset=dataset,
+        table=table,
+        version=version,
+        owner=owner)
     rendered_docs = _render_doc_md(
         project_alias=project_alias, dataset=dataset, table=table)
 
     # Create a directory to store
     path = get_table_dir(
-        models_dir=models_dir, project=project_alias, dataset=dataset, table=table)
+        models_dir=models_dir,
+        project=project_alias,
+        dataset=dataset,
+        table=table)
     if os.path.isdir(path) and overwrite is False:
         raise ValueError("{} already exists".format(path))
     os.makedirs(path, exist_ok=True)
@@ -92,12 +101,12 @@ def generate_model(
 
 
 def _render_schema_yaml(
-        project_alias: str,
-        dataset: str,
-        table: str,
-        owner="",
-        version=2,
-        templates_base_dir=get_templates_path()) -> str:
+    project_alias: str,
+    dataset: str,
+    table: str,
+    owner="",
+    version=2,
+    templates_base_dir=get_templates_path()) -> str:
     """Render a model SQL file
 
     Args:
@@ -126,14 +135,15 @@ def _render_schema_yaml(
 
 
 def _render_model_sql(
-        materialization: str,
-        project_alias: str,
-        dataset: str,
-        table: str,
-        owner: str,
-        labels: Optional[Dict[str, str]] = None,
-        tags: Optional[List[str]] = None,
-        templates_base_dir=get_templates_path()) -> str:
+    materialization: str,
+    project_alias: str,
+    dataset: str,
+    table: str,
+    owner: str,
+    labels: Optional[Dict[str, str]] = None,
+    tags: Optional[List[str]] = None,
+    templates_base_dir=get_templates_path()
+) -> str:
     """Render a model SQL file
 
     Args:
@@ -157,7 +167,8 @@ def _render_model_sql(
     path = os.path.join(templates_base_dir)
     env = Environment(loader=FileSystemLoader(path))
     template = env.get_template(os.path.join('v2', 'model', 'model.sql.tmpl'))
-    model_reference_id = generate_reference_id(project=project_alias, dataset=dataset, table=table)
+    model_reference_id = generate_reference_id(
+        project=project_alias, dataset=dataset, table=table)
     return template.render(
         project_alias=project_alias,
         dataset=dataset,
@@ -172,10 +183,10 @@ def _render_model_sql(
 
 
 def _render_doc_md(
-        project_alias: str,
-        dataset: str,
-        table: str,
-        templates_base_dir=get_templates_path()) -> str:
+    project_alias: str,
+    dataset: str,
+    table: str,
+    templates_base_dir=get_templates_path()) -> str:
     """Render a model SQL file
 
     Args:

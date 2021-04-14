@@ -17,7 +17,5 @@
 # limitations under the License.
 #
 
-
-
 # module version
 VERSION = "0.13.0"

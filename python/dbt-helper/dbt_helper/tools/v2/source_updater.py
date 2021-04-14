@@ -17,7 +17,6 @@
 # limitations under the License.
 #
 
-
 from __future__ import absolute_import, division, print_function, annotations
 
 from dataclasses import dataclass
@@ -90,7 +89,8 @@ class SourceTableUpdaterV2:
         with open(path, "w") as writer:
             self.yaml.dump(self.data, writer)
 
-    def update_with_bq_table(self, table: bigquery.Table) -> SourceTableUpdaterV2:
+    def update_with_bq_table(
+            self, table: bigquery.Table) -> SourceTableUpdaterV2:
         """Update table metadata with a BigQuery table.
 
         Args:
@@ -107,7 +107,8 @@ class SourceTableUpdaterV2:
         self.update_columns(table.schema)
         return self
 
-    def update_columns(self, schema: bigquery.SchemaField) -> SourceTableUpdaterV2:
+    def update_columns(
+            self, schema: bigquery.SchemaField) -> SourceTableUpdaterV2:
         """Update 'sources[].tables[].columns'
 
         Args:
@@ -139,7 +140,9 @@ class SourceTableUpdaterV2:
                 self.columns.insert(cursor_index + 1, new_column)
         # Remove columns which don't exist in new schema.
         for existing_column in self.columns:
-            if existing_column["name"] not in [c.name for c in new_schema_info_list]:
+            if existing_column["name"] not in [
+                    c.name for c in new_schema_info_list
+            ]:
                 self.columns.remove(existing_column)
         return self
 

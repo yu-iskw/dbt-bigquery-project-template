@@ -17,7 +17,6 @@
 # limitations under the License.
 #
 
-
 from __future__ import absolute_import, division, print_function
 
 import click
@@ -36,20 +35,30 @@ def analysis(context):
 
 # pylint: disable=W0613
 @analysis.command()
-@click.option("--analysis_dir", type=click.Path(exists=True), required=True,
-              help="path to the dbt analysis dir")
-@click.option("--path", type=str, required=True, help="relative path to a dbt analysis from the analysis directory")
-@click.option("--owner", type=str, help="owner name", default="", callback=validate_owner_callback)
-@click.option("--version", type=str, help="dbt config version", default=DEFAULT_DBT_CONFIG_VERSION)
+@click.option(
+    "--analysis_dir",
+    type=click.Path(exists=True),
+    required=True,
+    help="path to the dbt analysis dir")
+@click.option(
+    "--path",
+    type=str,
+    required=True,
+    help="relative path to a dbt analysis from the analysis directory")
+@click.option(
+    "--owner",
+    type=str,
+    help="owner name",
+    default="",
+    callback=validate_owner_callback)
+@click.option(
+    "--version",
+    type=str,
+    help="dbt config version",
+    default=DEFAULT_DBT_CONFIG_VERSION)
 @click.option("--overwrite", is_flag=True, help="flag to overwrite")
 @click.pass_context
-def scaffold(
-        context,
-        analysis_dir,
-        path,
-        owner,
-        version,
-        overwrite):
+def scaffold(context, analysis_dir, path, owner, version, overwrite):
     """Generate scaffold files of a dbt model with template files."""
     saved_path = generate_analysis(
         analysis_dir=analysis_dir,

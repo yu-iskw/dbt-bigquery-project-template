@@ -17,7 +17,6 @@
 # limitations under the License.
 #
 
-
 from __future__ import absolute_import, division, print_function
 
 from dataclasses import dataclass
@@ -98,5 +97,6 @@ def parse_scalar_schema_field(
     full_field_names = parent_field_names.copy()
     full_field_names.append(schema_field.name)
     full_field_name = ".".join(full_field_names)
-    schema_info = SchemaInfo(name=full_field_name, description=schema_field.description)
+    schema_info = SchemaInfo(
+        name=full_field_name, description=schema_field.description)
     return schema_info

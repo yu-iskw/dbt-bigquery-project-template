@@ -17,7 +17,6 @@
 # limitations under the License.
 #
 
-
 from __future__ import absolute_import, division, print_function
 
 from dataclasses import dataclass
@@ -60,12 +59,16 @@ class DbtSourceTableColumn:
         return dbt_source_table_column
 
     def compare(self, schema_info: SchemaInfo):
+        """Compare with another SchemaInfo. """
         if self.name != schema_info.name:
-            raise ValueError("Given schema field is wrong: ({}, {})".format(self.name, schema_info.name))
+            raise ValueError(
+                "Given schema field is wrong: ({}, {})".format(
+                    self.name, schema_info.name))
         reasons = {}
         if self.description != schema_info.description:
             key = "description of column {} is different".format(self.name)
-            diff = extract_diff(self.description, schema_info.description, as_str=True)
+            diff = extract_diff(
+                self.description, schema_info.description, as_str=True)
             reasons[key] = diff
         return reasons
 
@@ -100,8 +103,10 @@ class DbtSourceTable:
             meta=yaml_block.get("meta", {}),
             tags=yaml_block.get("tags", []),
             tests=yaml_block.get("tests", []),
-            columns=[DbtSourceTableColumn.parse(sub_yaml_block)
-                     for sub_yaml_block in yaml_block.get("columns", [])],
+            columns=[
+                DbtSourceTableColumn.parse(sub_yaml_block)
+                for sub_yaml_block in yaml_block.get("columns", [])
+            ],
         )
         return dbt_source_table
 
@@ -130,7 +135,8 @@ class DbtSourceTable:
         for c in self.columns:
             target_schema_info = [s for s in bq_schema_info if c.name == s.name]
             if len(target_schema_info) == 0:
-                reasons["not found column {}".format(c.name)] = "not found column {}".format(c.name)
+                reasons["not found column {}".format(
+                    c.name)] = "not found column {}".format(c.name)
             else:
                 sub_reasons = c.compare(target_schema_info[0])
                 reasons.update(sub_reasons)
@@ -171,8 +177,10 @@ class DbtSource:
             schema=yaml_block.get("schema", None),
             meta=yaml_block.get("meta", {}),
             tags=yaml_block.get("tags", []),
-            tables=[DbtSourceTable.parse(sub_yaml_block)
-                    for sub_yaml_block in yaml_block.get("tables", [])],
+            tables=[
+                DbtSourceTable.parse(sub_yaml_block)
+                for sub_yaml_block in yaml_block.get("tables", [])
+            ],
         )
         return dbt_source
 
@@ -213,7 +221,8 @@ class DbtSources:
             raise ValueError("it doesn't have the 'sources' property.")
 
         dbt_sources = DbtSources(
-            config_version=yaml_block.get("version", DEFAULT_DBT_CONFIG_VERSION),
+            config_version=yaml_block.get(
+                "version", DEFAULT_DBT_CONFIG_VERSION),
             sources=[DbtSource.parse(x) for x in yaml_block.get("sources", [])],
         )
         return dbt_sources

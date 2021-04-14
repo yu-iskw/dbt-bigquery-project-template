@@ -17,7 +17,6 @@
 # limitations under the License.
 #
 
-
 from __future__ import absolute_import, division, print_function
 
 import os
@@ -72,17 +71,24 @@ def generate_source_for_bq_dataset(
 
     # Render contents
     rendered_source = _render_source_yaml_for_bq_dataset(
-        project=project, project_alias=project_alias, dataset=dataset,
-        dataset_description=dataset_description, dataset_labels=dataset_labels,
+        project=project,
+        project_alias=project_alias,
+        dataset=dataset,
+        dataset_description=dataset_description,
+        dataset_labels=dataset_labels,
         version=version)
 
     # Create a directory to store
-    source_filename = get_source_yaml_file_name(project_alias=project_alias, dataset=dataset)
-    path = get_dataset_dir(models_dir=models_dir, project=project_alias, dataset=dataset)
+    source_filename = get_source_yaml_file_name(
+        project_alias=project_alias, dataset=dataset)
+    path = get_dataset_dir(
+        models_dir=models_dir, project=project_alias, dataset=dataset)
 
     if dry_run is True:
         # TODO replace it with logging
-        print("[WARN] {} already exists".format(os.path.join(path, source_filename)))
+        print(
+            "[WARN] {} already exists".format(
+                os.path.join(path, source_filename)))
     else:
         if os.path.isdir(path) and overwrite is False:
             raise ValueError("{} already exists".format(path))
@@ -145,19 +151,31 @@ def generate_source_for_bq_table(
 
     # Render contents
     rendered_source = _render_source_yaml_for_bq_table(
-        project=project, project_alias=project_alias, dataset=dataset, table=table,
+        project=project,
+        project_alias=project_alias,
+        dataset=dataset,
+        table=table,
         identifier=identifier,
-        table_description=table_description, columns=columns,
-        tags=tags, labels=labels, version=version)
+        table_description=table_description,
+        columns=columns,
+        tags=tags,
+        labels=labels,
+        version=version)
 
     # Create a directory to store
     source_filename = get_source_yaml_file_name(
         project_alias=project_alias, dataset=dataset, table=table)
-    path = get_table_dir(models_dir=models_dir, project=project_alias, dataset=dataset, table=table)
+    path = get_table_dir(
+        models_dir=models_dir,
+        project=project_alias,
+        dataset=dataset,
+        table=table)
 
     if dry_run is True:
         # TODO replace it with logging
-        print("[WARN] {} already exists".format(os.path.join(path, source_filename)))
+        print(
+            "[WARN] {} already exists".format(
+                os.path.join(path, source_filename)))
     else:
         if os.path.isdir(path) and overwrite is False:
             raise ValueError("{} already exists".format(path))
@@ -170,9 +188,7 @@ def generate_source_for_bq_table(
 
 
 def get_source_yaml_file_name(
-        project_alias: str,
-        dataset: str,
-        table: str = None):
+        project_alias: str, dataset: str, table: str = None):
     """Get source YAML file name
 
     Args:
@@ -184,18 +200,20 @@ def get_source_yaml_file_name(
         str: source YAML file name
     """
     source_filename = "src_{}.yml".format(
-        generate_reference_id(project=project_alias, dataset=dataset, table=table))
+        generate_reference_id(
+            project=project_alias, dataset=dataset, table=table))
     return source_filename
 
 
 def _render_source_yaml_for_bq_dataset(
-        project: str,
-        project_alias: str,
-        dataset: str,
-        dataset_description: Optional[str] = None,
-        dataset_labels: Optional[Dict[str, str]] = None,
-        version=DEFAULT_DBT_CONFIG_VERSION,
-        templates_base_dir=get_templates_path()) -> str:
+    project: str,
+    project_alias: str,
+    dataset: str,
+    dataset_description: Optional[str] = None,
+    dataset_labels: Optional[Dict[str, str]] = None,
+    version=DEFAULT_DBT_CONFIG_VERSION,
+    templates_base_dir=get_templates_path()
+) -> str:
     """Render a dbt source YAML
 
     Args:
@@ -215,7 +233,8 @@ def _render_source_yaml_for_bq_dataset(
 
     path = os.path.join(templates_base_dir)
     env = Environment(loader=FileSystemLoader(path))
-    template = env.get_template(os.path.join('v2', 'source', 'dataset.source.yml.tmpl'))
+    template = env.get_template(
+        os.path.join('v2', 'source', 'dataset.source.yml.tmpl'))
     return template.render(
         project=project,
         project_alias=project_alias,
@@ -228,17 +247,18 @@ def _render_source_yaml_for_bq_dataset(
 
 
 def _render_source_yaml_for_bq_table(
-        project: str,
-        project_alias: str,
-        dataset: str,
-        table: str,
-        identifier: Optional[str] = None,
-        table_description: Optional[str] = None,
-        columns: Optional[List[Dict[str, Any]]] = None,
-        labels: Optional[Dict[str, str]] = None,
-        tags: Optional[List[str]] = None,
-        version=DEFAULT_DBT_CONFIG_VERSION,
-        templates_base_dir=get_templates_path()) -> str:
+    project: str,
+    project_alias: str,
+    dataset: str,
+    table: str,
+    identifier: Optional[str] = None,
+    table_description: Optional[str] = None,
+    columns: Optional[List[Dict[str, Any]]] = None,
+    labels: Optional[Dict[str, str]] = None,
+    tags: Optional[List[str]] = None,
+    version=DEFAULT_DBT_CONFIG_VERSION,
+    templates_base_dir=get_templates_path()
+) -> str:
     """Render a dbt source YAML
 
     Args:
@@ -267,7 +287,8 @@ def _render_source_yaml_for_bq_table(
 
     path = os.path.join(templates_base_dir)
     env = Environment(loader=FileSystemLoader(path))
-    template = env.get_template(os.path.join('v2', 'source', 'table.source.yml.tmpl'))
+    template = env.get_template(
+        os.path.join('v2', 'source', 'table.source.yml.tmpl'))
     return template.render(
         project=project,
         project_alias=project_alias,
@@ -300,7 +321,8 @@ def find_source_schema_paths(
         iter: paths of dbt source schema files
     """
     # Initialize parameters
-    project_alias = '.*' if project_alias is None else normalize_gcp_project(project=project_alias)
+    project_alias = '.*' if project_alias is None else normalize_gcp_project(
+        project=project_alias)
     dataset = '.*' if dataset is None else dataset
     table = '.*' if table is None else table
 
@@ -321,7 +343,7 @@ def find_source_schema_paths(
             tmp_project_alias = path_elements[0]
             tmp_dataset = path_elements[1]
             tmp_table = path_elements[2]
-            if (pattern_project_alias.search(tmp_project_alias)
-                    and pattern_dataset.search(tmp_dataset)
-                    and pattern_table.search(tmp_table)):
+            if (pattern_project_alias.search(tmp_project_alias) and
+                    pattern_dataset.search(tmp_dataset) and
+                    pattern_table.search(tmp_table)):
                 yield f

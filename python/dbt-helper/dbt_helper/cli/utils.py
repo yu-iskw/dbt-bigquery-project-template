@@ -17,7 +17,6 @@
 # limitations under the License.
 #
 
-
 from __future__ import absolute_import, division, print_function
 
 import re
@@ -51,7 +50,8 @@ def validate_label_value(value: str) -> Tuple[bool, str]:
     pattern = re.compile(r'\s+')
     if pattern.search(value):
         modified_value = re.sub(r'\s+', '_', value)
-        error_message = 'A label value contains spaces. It can be {}.'.format(modified_value)
+        error_message = 'A label value contains spaces. It can be {}.'.format(
+            modified_value)
         return False, error_message
     return True, ""
 
