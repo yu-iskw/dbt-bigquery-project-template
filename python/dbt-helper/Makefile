@@ -17,6 +17,15 @@ lint-shell:
 lint-python:
 	bash ./dev/lint_python.sh
 
+# Format coded
+.PHONY: format
+format: format-python
+
+# Format python codes
+.PHONEY: format-python
+format-python:
+	bash dev/format_python.sh
+
 # Run the unit tests.
 .PHONEY: test
 test:
