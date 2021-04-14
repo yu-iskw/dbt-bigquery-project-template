@@ -50,28 +50,28 @@ resource_type="$(get_dbt_resource_type "${subcommand}")"
 # If it is 0, then return the exist status 0.
 selected_resources=$(
   EXECUTION_DATE="${execution_date}" \
-  dbt ls \
+    dbt ls \
     --profiles-dir "$PROFILES_DIR" \
     --profile "$PROFILE" \
     --target "$target" \
     --vars "$(cat "$vars_path")" \
     --resource-type "${resource_type}" \
-    --selector "$selector" \
-  || :
+    --selector "$selector" ||
+    :
 )
 
 # Completed successfully if there is no selected resources.
-if [[ $(echo "$selected_resources" | wc -w) -eq 0 ]] ; then
+if [[ $(echo "$selected_resources" | wc -w) -eq 0 ]]; then
   echo "No selected resources."
   exit 0
 fi
 
 # Run dbt command
 # shellcheck disable=SC2046
-EXECUTION_DATE="${execution_date}"\
+EXECUTION_DATE="${execution_date}" \
   dbt "${subcommand}" \
-    --profiles-dir "$PROFILES_DIR" \
-    --profile "$PROFILE" \
-    --target "$target" \
-    --selector "$selector" \
-    --vars "$(cat "$vars_path")"
+  --profiles-dir "$PROFILES_DIR" \
+  --profile "$PROFILE" \
+  --target "$target" \
+  --selector "$selector" \
+  --vars "$(cat "$vars_path")"

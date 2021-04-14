@@ -21,15 +21,15 @@ target=${2:?"target is not set"}
 docker_tag=${3:?"docker_tag is not set"}
 
 # Validate arguments
-if [[ "$mode" != "build" ]] && [[ "$mode" != "push" ]] ; then
+if [[ "$mode" != "build" ]] && [[ "$mode" != "push" ]]; then
   echo "model should be 'build' or 'push'."
   exit 1
 fi
 
 # Get the docker image name
-if [[ "$target" == "dev" ]] ; then
+if [[ "$target" == "dev" ]]; then
   export docker_image="gcr.io/${DEV_PROJECT_ID}/dbt-helper:${docker_tag}"
-elif [[ "$target" == "prod" ]] ; then
+elif [[ "$target" == "prod" ]]; then
   export docker_image="gcr.io/${PROD_PROJECT_ID}/dbt-helper:${docker_tag}"
 else
   echo "target should be dev or prod"
@@ -43,6 +43,6 @@ docker build --rm \
   "${PROJECT_DIR}"
 
 # If mode is "push", then push the docker image.
-if [[ "$mode" == "push" ]] ; then
+if [[ "$mode" == "push" ]]; then
   docker push "$docker_image"
 fi

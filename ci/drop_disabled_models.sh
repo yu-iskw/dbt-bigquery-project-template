@@ -20,7 +20,7 @@ client_project="${4:-""}"
 # shellcheck disable=SC2046
 dbt-helper model drop-disabled-models \
   --manifest "$manifest_json_path" \
-  --schema_version "$schema_version"  \
+  --schema_version "$schema_version" \
   --resource_types "model" \
   --resource_types "snapshot" \
   --client_project "${client_project}" \

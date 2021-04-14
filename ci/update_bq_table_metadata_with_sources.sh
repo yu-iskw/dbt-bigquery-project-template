@@ -28,8 +28,8 @@ source_paths=$(
     --selector "$selector" \
     --vars "$(cat "$vars_path")" \
     --resource source \
-    --output path \
-  | sort | uniq
+    --output path |
+    sort | uniq
 )
 echo "# selected resources: $(echo "$source_paths" | wc -w)"
 
@@ -37,10 +37,9 @@ echo "# selected resources: $(echo "$source_paths" | wc -w)"
 # NOTE: append `--dry_run` if `$dry_run` is not 0.
 # shellcheck disable=SC2046
 # shellcheck disable=SC2005
-for source_path in ${source_paths}
-do
+for source_path in ${source_paths}; do
   # Validate the file.
-  if [[ ! -f "$source_path" ]] ; then
+  if [[ ! -f "$source_path" ]]; then
     echo "WARN: ${source_path} is not a file."
     continue
   fi
@@ -51,8 +50,8 @@ do
   # because we have to set a GCP project with the default credentials.
   echo "update ${source_path}"
   dbt-helper source update-from-source \
-      --models_dir "$models_dir" \
-      --vars_path "$vars_path" \
-      --source_path "$source_path" \
-      $([[ $dry_run -ne 0 ]] && echo "--dry_run")
+    --models_dir "$models_dir" \
+    --vars_path "$vars_path" \
+    --source_path "$source_path" \
+    $([[ $dry_run -ne 0 ]] && echo "--dry_run")
 done

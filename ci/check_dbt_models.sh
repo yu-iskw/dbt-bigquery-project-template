@@ -18,7 +18,7 @@ export FAILED=0
 
 # Check config.owner in SQL file
 selected_models="$(jq '.nodes as $nodes | select(.config.owner == null) | .nodes | keys' "$manifest_json")"
-if [[ "$(echo "$selected_models" | wc -l)" -ne 0 ]] ; then
+if [[ "$(echo "$selected_models" | wc -l)" -ne 0 ]]; then
   echo "The files don't contain \`config.owner\` in the SQL files."
   echo "$selected_models"
   export FAILED=1
@@ -26,15 +26,14 @@ fi
 
 # Check meta.owner in schema.yml
 selected_models="$(jq '.nodes as $nodes | select(.meta.owner == null) | .nodes | keys' "$manifest_json")"
-if [[ "$(echo "$selected_models" | wc -l)" -ne 0 ]] ; then
+if [[ "$(echo "$selected_models" | wc -l)" -ne 0 ]]; then
   echo "The files don't contain \`meta.owner\` in the schema files."
   echo "$selected_models"
   export FAILED=1
 fi
 
-
 # If any checker was failed, then exit 1.
-if [[ $FAILED -eq 1 ]] ; then
+if [[ $FAILED -eq 1 ]]; then
   echo "$0 was failed"
   exit 1
 fi
