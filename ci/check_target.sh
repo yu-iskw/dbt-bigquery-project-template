@@ -8,7 +8,7 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
 NUM_FILES=$(find "${PROJECT_DIR}/target" -type f | wc -l)
 
-if [[ $NUM_FILES -eq 0 ]] ; then
+if [[ $NUM_FILES -eq 0 ]]; then
   echo "There is no file in ./target ."
   exit 1
 fi
