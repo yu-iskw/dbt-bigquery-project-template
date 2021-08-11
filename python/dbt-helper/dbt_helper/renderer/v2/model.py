@@ -47,12 +47,15 @@ def generate_model(
         sql_filename=None,
         doc_filename="docs.md",
         overwrite=False,
-        experimental=False) -> str:
+        experimental=False,
+        templates_base_dir: Optional[str] = None) -> str:
     """Generate dbt model files"""
     if tags is None:
         tags = []
     if labels is None:
         labels = {}
+    if templates_base_dir is None:
+        templates_base_dir = get_templates_path()
 
     # Put experimental as a label
     if experimental is True:
@@ -68,15 +71,20 @@ def generate_model(
         materialization=materialization,
         tags=tags,
         labels=labels,
-        owner=owner)
+        owner=owner,
+        templates_base_dir=templates_base_dir)
     rendered_schema = _render_schema_yaml(
         project_alias=project_alias,
         dataset=dataset,
         table=table,
         version=version,
-        owner=owner)
+        owner=owner,
+        templates_base_dir=templates_base_dir)
     rendered_docs = _render_doc_md(
-        project_alias=project_alias, dataset=dataset, table=table)
+        project_alias=project_alias,
+        dataset=dataset,
+        table=table,
+        templates_base_dir=templates_base_dir)
 
     # Create a directory to store
     path = get_table_dir(
