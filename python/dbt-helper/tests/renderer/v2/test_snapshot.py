@@ -69,12 +69,6 @@ class TestSnapshotRender(unittest.TestCase):
             owner=owner,
             templates_base_dir=os.path.join(get_module_root(), "tests", "fixtures")
         )
-        self.assertTrue(strategy in rendered_sql)
-        self.assertTrue(project_alias in rendered_sql)
-        self.assertTrue(dataset in rendered_sql)
-        self.assertTrue(table in rendered_sql)
-        self.assertTrue(dbt_helper.VERSION in rendered_sql)
-        
         self.assertTrue("THIS_IS_MY_CUSTOM_TEMPLATE" in rendered_sql)
     
     def test__render_schema_yaml(self):
@@ -109,10 +103,3 @@ class TestSnapshotRender(unittest.TestCase):
             templates_base_dir=os.path.join(get_module_root(), "tests", "fixtures"),
         )
         self.assertTrue("THIS_IS_MY_CUSTOM_TEMPLATE" in rendered_yaml)
-
-        rendered_yaml_dict = yaml.safe_load(rendered_yaml)
-        self.assertEqual(len(rendered_yaml_dict["snapshots"]), 1)
-        self.assertEqual(rendered_yaml_dict["snapshots"][0]["name"],
-                         "test_project_01__test_dataset__test_snapshot_table")
-        self.assertTrue(len(rendered_yaml_dict["snapshots"][0]["description"]) > 0)
-        self.assertEqual(len(rendered_yaml_dict["snapshots"][0]["columns"]), 1)
