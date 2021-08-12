@@ -54,8 +54,6 @@ def generate_model(
         tags = []
     if labels is None:
         labels = {}
-    if templates_base_dir is None:
-        templates_base_dir = get_templates_path()
 
     # Put experimental as a label
     if experimental is True:
@@ -114,7 +112,7 @@ def _render_schema_yaml(
     table: str,
     owner="",
     version=2,
-    templates_base_dir=get_templates_path()) -> str:
+    templates_base_dir: Optional[str] = None) -> str:
     """Render a model SQL file
 
     Args:
@@ -127,6 +125,9 @@ def _render_schema_yaml(
     Returns:
         str: rendered schema YAML file
     """
+    if templates_base_dir is None:
+        templates_base_dir = get_templates_path()
+    
     path = os.path.join(templates_base_dir)
     env = Environment(loader=FileSystemLoader(path))
     template = env.get_template(os.path.join('v2', 'model', 'schema.yml.tmpl'))
@@ -150,7 +151,7 @@ def _render_model_sql(
     owner: str,
     labels: Optional[Dict[str, str]] = None,
     tags: Optional[List[str]] = None,
-    templates_base_dir=get_templates_path()
+    templates_base_dir: Optional[str] = None,
 ) -> str:
     """Render a model SQL file
 
@@ -171,6 +172,9 @@ def _render_model_sql(
         tags = []
     if labels is None:
         labels = {}
+    
+    if templates_base_dir is None:
+        templates_base_dir = get_templates_path()
 
     path = os.path.join(templates_base_dir)
     env = Environment(loader=FileSystemLoader(path))
@@ -194,7 +198,7 @@ def _render_doc_md(
     project_alias: str,
     dataset: str,
     table: str,
-    templates_base_dir=get_templates_path()) -> str:
+    templates_base_dir: Optional[str] = None) -> str:
     """Render a model SQL file
 
     Args:
@@ -206,6 +210,9 @@ def _render_doc_md(
     Returns:
         str: rendered SQL file
     """
+    if templates_base_dir is None:
+        templates_base_dir = get_templates_path()
+    
     path = os.path.join(templates_base_dir)
     env = Environment(loader=FileSystemLoader(path))
     template = env.get_template(os.path.join('v2', 'model', 'docs.md.tmpl'))

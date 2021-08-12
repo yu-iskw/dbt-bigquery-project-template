@@ -58,9 +58,6 @@ def generate_snapshot(
     if experimental is True:
         labels["status"] = "experimental"
     
-    if templates_base_dir is None:
-        templates_base_dir = get_templates_path()
-
     # Render contents
     reference_id = generate_reference_id(
         project=project_alias, dataset=dataset, table=table)

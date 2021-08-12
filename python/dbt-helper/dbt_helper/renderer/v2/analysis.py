@@ -55,8 +55,6 @@ def generate_analysis(
     """
     # Format inputs
     analysis_dir = os.path.realpath(analysis_dir)
-    if templates_base_dir is None:
-        templates_base_dir = get_templates_path()
 
     # Render contents
     rendered_sql = _render_analysis_sql(templates_base_dir=templates_base_dir)
@@ -86,7 +84,7 @@ def _render_analysis_yaml(
     saved_path: str,
     owner,
     version=DEFAULT_DBT_CONFIG_VERSION,
-    templates_base_dir=get_templates_path()
+    templates_base_dir: Optional[str] = None,
 ) -> str:
     """Render a schema YAML file of analysis.
 
@@ -99,6 +97,8 @@ def _render_analysis_yaml(
     Returns:
         (str): a rendered analysis YAML
     """
+    if templates_base_dir is None:
+        templates_base_dir = get_templates_path()
 
     analysis_name = get_analysis_name(saved_path)
     env = Environment(loader=FileSystemLoader(templates_base_dir))
@@ -114,7 +114,7 @@ def _render_analysis_yaml(
 
 def _render_analysis_sql(
     version=DEFAULT_DBT_CONFIG_VERSION,
-    templates_base_dir=get_templates_path()
+    templates_base_dir: Optional[str] = None,
 ) -> str:
     """Render an analysis SQL file
 
@@ -125,6 +125,9 @@ def _render_analysis_sql(
     Returns:
         (str): a rendered SQL file
     """
+    if templates_base_dir is None:
+        templates_base_dir = get_templates_path()
+    
     env = Environment(loader=FileSystemLoader(templates_base_dir))
     template = env.get_template(
         os.path.join('v2', 'analysis', 'analysis.sql.tmpl'))
