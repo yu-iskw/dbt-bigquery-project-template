@@ -49,7 +49,8 @@ def generate_source_for_bq_dataset(
         dataset_labels: Optional[Dict[str, str]] = None,
         version=DEFAULT_DBT_CONFIG_VERSION,
         overwrite=False,
-        dry_run=False) -> str:
+        dry_run=False,
+        templates_base_dir: Optional[str] = None) -> str:
     """Generate dbt source for a BigQuery dataset
 
     Args:
@@ -62,6 +63,7 @@ def generate_source_for_bq_dataset(
         version (str): dbt config version
         overwrite (bool): flag to overwrite
         dry_run (bool): dry run mode
+        templates_base_dir (str): the base directory of template files
 
     Returns:
         str: path to the created directory
@@ -76,7 +78,9 @@ def generate_source_for_bq_dataset(
         dataset=dataset,
         dataset_description=dataset_description,
         dataset_labels=dataset_labels,
-        version=version)
+        version=version,
+        templates_base_dir=templates_base_dir,
+    )
 
     # Create a directory to store
     source_filename = get_source_yaml_file_name(
@@ -113,7 +117,8 @@ def generate_source_for_bq_table(
         version=DEFAULT_DBT_CONFIG_VERSION,
         overwrite=False,
         dry_run=False,
-        is_shard=False) -> str:
+        is_shard=False,
+        templates_base_dir: Optional[str] = None) -> str:
     """Generate dbt source
 
     Args:
@@ -160,7 +165,9 @@ def generate_source_for_bq_table(
         columns=columns,
         tags=tags,
         labels=labels,
-        version=version)
+        version=version,
+        templates_base_dir=templates_base_dir
+    )
 
     # Create a directory to store
     source_filename = get_source_yaml_file_name(
@@ -212,7 +219,7 @@ def _render_source_yaml_for_bq_dataset(
     dataset_description: Optional[str] = None,
     dataset_labels: Optional[Dict[str, str]] = None,
     version=DEFAULT_DBT_CONFIG_VERSION,
-    templates_base_dir=get_templates_path()
+    templates_base_dir: Optional[str] = None,
 ) -> str:
     """Render a dbt source YAML
 
@@ -230,6 +237,9 @@ def _render_source_yaml_for_bq_dataset(
     """
     if dataset_labels is None:
         dataset_labels = {}
+    
+    if templates_base_dir is None:
+        templates_base_dir = get_templates_path()
 
     path = os.path.join(templates_base_dir)
     env = Environment(loader=FileSystemLoader(path))
@@ -257,7 +267,7 @@ def _render_source_yaml_for_bq_table(
     labels: Optional[Dict[str, str]] = None,
     tags: Optional[List[str]] = None,
     version=DEFAULT_DBT_CONFIG_VERSION,
-    templates_base_dir=get_templates_path()
+    templates_base_dir: Optional[str] = None,
 ) -> str:
     """Render a dbt source YAML
 
@@ -284,6 +294,9 @@ def _render_source_yaml_for_bq_table(
         columns = []
     if tags is None:
         tags = []
+    
+    if templates_base_dir is None:
+        templates_base_dir = get_templates_path()
 
     path = os.path.join(templates_base_dir)
     env = Environment(loader=FileSystemLoader(path))

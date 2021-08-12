@@ -72,10 +72,12 @@ def source(context):
     help="dbt config version",
     default=DEFAULT_DBT_CONFIG_VERSION)
 @click.option("--overwrite", is_flag=True, help="flag to overwrite")
+@click.option(
+    "--templates_base_dir", type=str, help="directory name containing templates")
 @click.pass_context
 def scaffold(
         context, models_dir, project, project_alias, dataset, table, labels,
-        tags, version, overwrite):
+        tags, version, overwrite, templates_base_dir):
     """Generate scaffold files of a dbt source"""
     labels_dict = parse_labels(labels=labels)
     path = generate_source_for_bq_table(
@@ -87,7 +89,9 @@ def scaffold(
         labels=labels_dict,
         tags=tags,
         version=version,
-        overwrite=overwrite)
+        overwrite=overwrite,
+        templates_base_dir=templates_base_dir,
+    )
     # Show information on stdout
     click.echo("Scaffold files are generated under {}".format(path))
 
@@ -124,10 +128,12 @@ def scaffold(
 @click.option("--overwrite", is_flag=True, help="flag to overwrite")
 @click.option("--dry_run", is_flag=True, help="dry run mode")
 @click.option("--is_shard", is_flag=True, help="import a shard table")
+@click.option(
+    "--templates_base_dir", type=str, help="directory name containing templates")
 @click.pass_context
 def importing(
         context, models_dir, project, project_alias, dataset, table, tags,
-        client_project, version, overwrite, dry_run, is_shard):
+        client_project, version, overwrite, dry_run, is_shard, templates_base_dir):
     """Generate dbt sources by importing metadata of existing BigQuery dataset or tables.
 
     If 'table' is not set, an only BigQuery dataset is imported.
@@ -144,6 +150,7 @@ def importing(
         overwrite (bool): if overwrite or not
         dry_run (bool): if dry run or not
         is_shard (bool): if sharded or not
+        templates_base_dir (str): the base directory of template files
     """
     # Get tables under the dataset of the project
     client = create_bigquery_client(project=client_project)
@@ -159,7 +166,8 @@ def importing(
             dataset=dataset,
             dataset_description=bq_dataset.description,
             dataset_labels=bq_dataset.labels,
-            overwrite=overwrite)
+            overwrite=overwrite,
+            templates_base_dir=templates_base_dir)
 
     # Import BigQuery tables
     tables = get_bigquery_tables(
@@ -190,7 +198,9 @@ def importing(
             version=version,
             overwrite=overwrite,
             dry_run=dry_run,
-            is_shard=is_shard)
+            is_shard=is_shard,
+            templates_base_dir=templates_base_dir
+        )
 
         if dry_run is True:
             click.echo(
