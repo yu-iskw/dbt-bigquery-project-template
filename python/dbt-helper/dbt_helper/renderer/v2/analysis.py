@@ -20,6 +20,7 @@
 from __future__ import absolute_import, division, print_function
 
 import os
+from typing import Optional
 
 from jinja2 import Environment, FileSystemLoader
 
@@ -36,7 +37,8 @@ def generate_analysis(
         owner: str,
         version=DEFAULT_DBT_CONFIG_VERSION,
         schema_filename="analysis.yml",
-        overwrite=False) -> str:
+        overwrite=False,
+        templates_base_dir: Optional[str] = None) -> str:
     """Generate dbt analysis files
 
     Args:
@@ -46,17 +48,23 @@ def generate_analysis(
         version (int): dbt config version
         schema_filename (str): analysis schema file name
         overwrite (bool): flag to overwrite or not
+        templates_base_dir (str): directory name containing templates 
 
     Returns:
         (str): path to actual saved path
     """
     # Format inputs
     analysis_dir = os.path.realpath(analysis_dir)
+    if templates_base_dir is None:
+        templates_base_dir = get_templates_path()
 
     # Render contents
-    rendered_sql = _render_analysis_sql()
+    rendered_sql = _render_analysis_sql(templates_base_dir=templates_base_dir)
     rendered_schema = _render_analysis_yaml(
-        saved_path=path_to_analysis, owner=owner, version=version)
+        saved_path=path_to_analysis,
+        owner=owner,
+        version=version,
+        templates_base_dir=templates_base_dir)
 
     # Create a directory for scaffold files
     full_path = os.path.join(analysis_dir, path_to_analysis)

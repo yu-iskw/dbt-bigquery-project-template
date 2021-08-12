@@ -57,8 +57,10 @@ def analysis(context):
     help="dbt config version",
     default=DEFAULT_DBT_CONFIG_VERSION)
 @click.option("--overwrite", is_flag=True, help="flag to overwrite")
+@click.option(
+    "--templates_base_dir", type=str, help="directory name containing templates")
 @click.pass_context
-def scaffold(context, analysis_dir, path, owner, version, overwrite):
+def scaffold(context, analysis_dir, path, owner, version, overwrite, templates_base_dir):
     """Generate scaffold files of a dbt model with template files."""
     saved_path = generate_analysis(
         analysis_dir=analysis_dir,
@@ -66,6 +68,7 @@ def scaffold(context, analysis_dir, path, owner, version, overwrite):
         owner=owner,
         version=version,
         overwrite=overwrite,
+        templates_base_dir=templates_base_dir,
     )
 
     # Show information on stdout
