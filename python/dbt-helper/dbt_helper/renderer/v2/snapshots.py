@@ -57,7 +57,7 @@ def generate_snapshot(
     # Put experimental as a label
     if experimental is True:
         labels["status"] = "experimental"
-    
+
     # Render contents
     reference_id = generate_reference_id(
         project=project_alias, dataset=dataset, table=table)
