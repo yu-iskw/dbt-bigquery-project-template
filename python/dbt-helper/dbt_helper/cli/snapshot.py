@@ -77,11 +77,13 @@ def snapshot(context):
 @click.option("--overwrite", is_flag=True, help="flag to overwrite")
 @click.option(
     "--experimental", is_flag=True, help="Create an experimental model")
+@click.option(
+    "--templates_base_dir", type=str, help="directory name containing templates")
 @click.pass_context
 def scaffold(
         context, snapshots_dir, strategy, project_alias, dataset, table, labels,
         tags, owner, version, schema_filename, sql_filename, overwrite,
-        experimental):
+        experimental, templates_base_dir):
     """Generate scaffold files of a dbt model"""
     labels_dict = parse_labels(labels=labels)
     path = generate_snapshot(
@@ -98,6 +100,7 @@ def scaffold(
         sql_filename=sql_filename,
         overwrite=overwrite,
         experimental=experimental,
+        templates_base_dir=templates_base_dir,
     )
 
     # Show information on stdout

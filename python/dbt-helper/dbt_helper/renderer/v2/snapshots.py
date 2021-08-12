@@ -46,7 +46,8 @@ def generate_snapshot(
         schema_filename="schema.yml",
         sql_filename=None,
         overwrite=False,
-        experimental=False) -> str:
+        experimental=False,
+        templates_base_dir: Optional[str] = None) -> str:
     """Generate dbt model files"""
     if tags is None:
         tags = []
@@ -56,6 +57,9 @@ def generate_snapshot(
     # Put experimental as a label
     if experimental is True:
         labels["status"] = "experimental"
+    
+    if templates_base_dir is None:
+        templates_base_dir = get_templates_path()
 
     # Render contents
     reference_id = generate_reference_id(
@@ -67,13 +71,17 @@ def generate_snapshot(
         table=table,
         tags=tags,
         labels=labels,
-        owner=owner)
+        owner=owner,
+        templates_base_dir=templates_base_dir,
+    )
     rendered_schema = _render_schema_yaml(
         project_alias=project_alias,
         dataset=dataset,
         table=table,
         version=version,
-        owner=owner)
+        owner=owner,
+        templates_base_dir=templates_base_dir,
+    )
 
     # Create a directory to store
     path = get_table_dir(
@@ -101,7 +109,7 @@ def _render_schema_yaml(
     table: str,
     owner="",
     version=2,
-    templates_base_dir=get_templates_path()) -> str:
+    templates_base_dir: Optional[str] = None) -> str:
     """Render a model SQL file
 
     Args:
@@ -114,6 +122,9 @@ def _render_schema_yaml(
     Returns:
         str: rendered schema YAML file
     """
+    if templates_base_dir is None:
+        templates_base_dir = get_templates_path()
+
     path = os.path.join(templates_base_dir)
     env = Environment(loader=FileSystemLoader(path))
     template = env.get_template(
@@ -139,7 +150,7 @@ def _render_snapshot_sql(
     labels: Optional[Dict[str, str]] = None,
     tags: Optional[List[str]] = None,
     owner="",
-    templates_base_dir=get_templates_path()) -> str:
+    templates_base_dir: Optional[str] = None) -> str:
     """Render a model SQL file
 
     Args:
@@ -159,6 +170,9 @@ def _render_snapshot_sql(
         tags = []
     if labels is None:
         labels = {}
+    
+    if templates_base_dir is None:
+        templates_base_dir = get_templates_path()
 
     path = os.path.join(templates_base_dir)
     env = Environment(loader=FileSystemLoader(path))
