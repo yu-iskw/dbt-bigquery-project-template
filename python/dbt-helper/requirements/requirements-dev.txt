@@ -5,7 +5,7 @@
 
 # Add extra modules to develop dbt-helper.
 pytest>=4.6.11
-pylint>=1.9.5
+pylint>=2.7.0
 yapf>=0.29.0
 pyyaml>=5.3
 safety>=1.9.0
