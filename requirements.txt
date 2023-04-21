@@ -3,3 +3,4 @@ dbt-core==0.19.0
 yq>=2.10.1
 
 -e ./python/dbt-helper
+sqlparse>=0.4.4 # not directly required, pinned by Snyk to avoid a vulnerability
