@@ -6,3 +6,4 @@ Jinja2>=2.11
 google-cloud-bigquery<1.26.0,>=1.25.0
 dictdiffer==0.8.1
 ruamel.yaml==0.16.12
+setuptools>=65.5.1 # not directly required, pinned by Snyk to avoid a vulnerability
